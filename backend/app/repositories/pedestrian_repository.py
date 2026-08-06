@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
 from app.models.pedestrian_count import HistoricalPedestrianCount, RealtimePedestrianCount
@@ -96,3 +96,23 @@ class PedestrianRepository:
                 )
 
         return counts
+
+    def get_historical_baselines(self, sensor_ids: list[int]) -> dict[int, float]:
+        """Return per-sensor historical means used as a coarse comparison baseline.
+
+        The Iteration 2 API deliberately reports this as an approximation: the
+        initial schema does not retain enough calendar dimensions to calculate a
+        matched weekday/season baseline without introducing unsupported precision.
+        """
+        if self.db is None or not sensor_ids:
+            return {}
+
+        rows = self.db.execute(
+            select(
+                HistoricalPedestrianCount.sensor_id,
+                func.avg(HistoricalPedestrianCount.total_count),
+            )
+            .where(HistoricalPedestrianCount.sensor_id.in_(sensor_ids))
+            .group_by(HistoricalPedestrianCount.sensor_id)
+        ).all()
+        return {int(sensor_id): float(average) for sensor_id, average in rows if average is not None and float(average) > 0}

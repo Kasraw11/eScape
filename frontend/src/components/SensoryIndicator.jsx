@@ -1,7 +1,7 @@
 const INDICATOR_LABELS = {
-  low: "Low sensory load",
-  high: "High sensory load",
-  unavailable: "Sensory data unavailable",
+  low: "Low sensory impact",
+  high: "High sensory impact",
+  unavailable: "Sensory information unavailable",
 };
 
 function normalizeIndicator(indicator) {
@@ -17,7 +17,7 @@ export default function SensoryIndicator({ indicator }) {
 
   return (
     <span className={`sensory-indicator sensory-indicator--${normalized}`} aria-label={label}>
-      <span aria-hidden="true">{normalized === "low" ? "OK" : normalized === "high" ? "!!" : "?"}</span>
+      <span className="sensory-indicator__mark" aria-hidden="true">{normalized === "low" ? "✓" : normalized === "high" ? "!" : "?"}</span>
       {label}
     </span>
   );

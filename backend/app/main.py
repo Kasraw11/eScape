@@ -42,7 +42,7 @@ def read_health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/health/database")
+@app.get("/health/database", response_model=None)
 def read_database_health() -> dict[str, str] | JSONResponse:
     if engine is None:
         logger.warning("Database health check failed: database URL is not configured")

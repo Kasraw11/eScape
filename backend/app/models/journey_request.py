@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Identity, Index, Numeric, String
+from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Identity, Index, Numeric, SmallInteger, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -22,6 +22,10 @@ class JourneyRequest(Base):
             "destination_longitude BETWEEN -180 AND 180",
             name="ck_journey_request_destination_longitude_range",
         ),
+        CheckConstraint(
+            "preferred_crowd_threshold BETWEEN 1 AND 5",
+            name="ck_journey_request_preferred_crowd_threshold_range",
+        ),
         Index("ix_journey_request_preference_id", "preference_id"),
     )
 
@@ -35,6 +39,7 @@ class JourneyRequest(Base):
     destination_latitude: Mapped[Decimal] = mapped_column(Numeric(9, 6), nullable=False)
     destination_longitude: Mapped[Decimal] = mapped_column(Numeric(9, 6), nullable=False)
     travel_mode: Mapped[str] = mapped_column(String(30), nullable=False)
+    preferred_crowd_threshold: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=3)
     requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     user_preference: Mapped["UserPreference | None"] = relationship(

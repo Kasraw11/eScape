@@ -151,11 +151,40 @@ def test_health_endpoint(client: TestClient) -> None:
     assert response.json() == {"status": "ok"}
 
 
+@pytest.mark.parametrize("origin", ["http://localhost:3000", "http://127.0.0.1:3000"])
+def test_route_planning_cors_preflight_allows_local_frontend(client: TestClient, origin: str) -> None:
+    response = client.options(
+        "/api/routes/plan",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == origin
+    assert "POST" in response.headers["access-control-allow-methods"]
+
+
 def test_database_health_unavailable(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(main_module, "engine", None)
     response = client.get("/health/database")
     assert response.status_code == 503
     assert response.json() == {"status": "error", "database": "unavailable"}
+
+
+def test_database_health_connection_failure_returns_safe_503(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    class UnavailableEngine:
+        def connect(self):
+            raise RuntimeError("database password must not appear in the response")
+
+    monkeypatch.setattr(main_module, "engine", UnavailableEngine())
+    response = client.get("/health/database")
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "error", "database": "unavailable"}
+    assert "password" not in response.text
 
 
 def test_valid_route_planning_request_returns_contract(client: TestClient) -> None:
@@ -181,6 +210,7 @@ def test_valid_transit_request(client: TestClient) -> None:
 def test_invalid_latitude_is_rejected(client: TestClient) -> None:
     response = client.post("/api/routes/plan", json=VALID_REQUEST | {"origin_latitude": 95})
     assert response.status_code == 422
+    assert isinstance(response.json()["detail"], list)
 
 
 def test_invalid_longitude_is_rejected(client: TestClient) -> None:
