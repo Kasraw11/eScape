@@ -1,0 +1,4 @@
+area_name,latitude,longitude,expected_data_availability,notes
+Bourke Street Mall,-37.813620,144.963070,has_data,Near sample sensor_id 1
+Flinders Street Station,-37.818270,144.967060,has_data,Near sample sensor_id 2
+Docklands Waterfront,-37.817900,144.944300,no_data,No sample sensor included nearby

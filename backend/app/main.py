@@ -1,9 +1,12 @@
 import logging
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
+from app.api.routes import router as routes_router
+from app.config import settings
 from app.database import engine
 
 logger = logging.getLogger(__name__)
@@ -13,6 +16,20 @@ app = FastAPI(
     description="Backend API for sensory-aware urban navigation",
     version="0.1.0",
 )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        origin.strip()
+        for origin in settings.backend_cors_origins.split(",")
+        if origin.strip()
+    ],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+)
+
+app.include_router(routes_router)
 
 
 @app.get("/")
