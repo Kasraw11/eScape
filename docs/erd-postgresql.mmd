@@ -9,6 +9,8 @@ erDiagram
     route_option ||--o{ alert : has
     route_segment ||--o{ alert : may_have
     sensor_location ||--o{ alert : may_trigger
+    sensor_location ||--o{ sensory_prediction : forecasts
+    sensory_prediction ||--o{ alert : may_trigger
     route_option ||--o{ route_refuge_recommendation : has
     point_of_interest ||--o{ route_refuge_recommendation : recommended_as
     route_option ||--o{ route_transport_stop : has
@@ -87,6 +89,7 @@ erDiagram
         INTEGER direction_2_count "non-negative"
         INTEGER total_count "not null, non-negative"
         VARCHAR source_record_id
+        VARCHAR data_source "row-level provenance"
     }
 
     realtime_pedestrian_count {
@@ -97,6 +100,7 @@ erDiagram
         INTEGER direction_2_count "non-negative"
         INTEGER total_count "not null, non-negative"
         VARCHAR source_record_id
+        VARCHAR data_source "row-level provenance"
     }
 
     route_sensor_score {
@@ -114,11 +118,14 @@ erDiagram
         BIGINT route_id FK
         BIGINT route_segment_id FK "nullable"
         BIGINT sensor_id FK "nullable"
+        BIGINT prediction_id FK "nullable"
+        VARCHAR deduplication_key
         VARCHAR alert_type "not null"
         VARCHAR severity "not null"
         TEXT message "not null"
         VARCHAR status "not null"
         TIMESTAMPTZ created_at "not null"
+        TIMESTAMPTZ updated_at
         TIMESTAMPTZ expires_at
         TIMESTAMPTZ acknowledged_at
     }
@@ -135,7 +142,25 @@ erDiagram
         TEXT opening_hours
         BOOLEAN is_sensory_refuge "not null, default false"
         VARCHAR source
+        VARCHAR source_record_id "unique with source"
+        TEXT accessibility_notes
+        TEXT sensory_notes
         TIMESTAMPTZ last_updated_at
+    }
+
+    sensory_prediction {
+        BIGINT prediction_id PK "identity"
+        BIGINT sensor_id FK "unique with target and model"
+        TIMESTAMPTZ prediction_for "not null"
+        INTEGER predicted_count
+        VARCHAR severity "not null"
+        VARCHAR confidence "not null"
+        TIMESTAMPTZ generated_at "not null"
+        VARCHAR source_freshness "not null"
+        VARCHAR model_version "not null"
+        VARCHAR data_availability_status "not null"
+        TEXT limitation_message
+        BOOLEAN source_validated "not null"
     }
 
     route_refuge_recommendation {

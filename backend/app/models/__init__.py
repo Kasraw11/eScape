@@ -11,6 +11,7 @@ from app.models.route_option import RouteOption
 from app.models.route_segment import RouteSegment
 from app.models.route_sensor_score import RouteSensorScore
 from app.models.sensor_location import SensorLocation
+from app.models.sensory_prediction import SensoryPrediction
 from app.models.transport_stop import RouteTransportStop, TransportStop
 from app.models.user_preference import UserPreference
 
@@ -27,6 +28,7 @@ __all__ = [
     "RouteSensorScore",
     "RouteTransportStop",
     "SensorLocation",
+    "SensoryPrediction",
     "TransportStop",
     "UserPreference",
 ]

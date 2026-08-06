@@ -50,7 +50,7 @@ function response(routes) {
 
 async function submitRoutes(user, routes) {
   planRoute.mockResolvedValueOnce(response(routes));
-  await user.click(screen.getByRole("button", { name: "Find routes" }));
+  await user.click(screen.getByRole("button", { name: "Find calmer routes" }));
   await waitFor(() => expect(planRoute).toHaveBeenCalledTimes(1));
 }
 
@@ -70,17 +70,19 @@ describe("RoutePlannerPage", () => {
     expect(screen.getByLabelText("Destination")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Walking" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Public transport" })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: "Find routes" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Find calmer routes" })).toBeInTheDocument();
   });
 
   it("shows inline validation and does not submit invalid journeys", async () => {
     const user = userEvent.setup();
     render(<RoutePlannerPage />);
 
-    await user.selectOptions(screen.getByLabelText("Destination"), "bourke-street-mall");
-    await user.click(screen.getByRole("button", { name: "Find routes" }));
+    await user.clear(screen.getByLabelText("Destination"));
+    await user.type(screen.getByLabelText("Destination"), "Bourke");
+    await user.click(screen.getByRole("option", { name: "Bourke Street Mall" }));
+    await user.click(screen.getByRole("button", { name: "Find calmer routes" }));
 
-    expect((await screen.findAllByText("Choose a destination different from the origin.")).length).toBe(2);
+    expect((await screen.findAllByText("Origin and destination cannot be the same.")).length).toBe(2);
     expect(screen.getByRole("combobox", { name: /Destination/ })).toHaveAttribute("aria-invalid", "true");
     expect(planRoute).not.toHaveBeenCalled();
   });
@@ -205,7 +207,7 @@ describe("RoutePlannerPage", () => {
     expect(fasterCard).toHaveAttribute("aria-pressed", "true");
     const compactSelector = screen.getByRole("button", { name: "Route 2" });
     expect(compactSelector).toHaveClass("map-route-selector__button--active");
-    expect(screen.getByText("faster-route selected")).toBeInTheDocument();
+    expect(screen.getAllByText("faster-route selected").length).toBeGreaterThanOrEqual(1);
     expect(planRoute).toHaveBeenCalledTimes(1);
 
     await user.click(screen.getByRole("button", { name: "Route 1 · Recommended" }));
@@ -230,9 +232,9 @@ describe("RoutePlannerPage", () => {
     planRoute.mockReturnValueOnce(new Promise((resolve, reject) => { rejectRequest = reject; }));
     render(<RoutePlannerPage />);
 
-    await user.click(screen.getByRole("button", { name: "Find routes" }));
+    await user.click(screen.getByRole("button", { name: "Find calmer routes" }));
     expect(screen.getByRole("status")).toHaveTextContent("Finding routes");
-    expect(screen.getByRole("button", { name: "Finding routes…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Finding calmer routes…" })).toBeDisabled();
 
     rejectRequest(new Error("Route provider is unavailable"));
     expect(await screen.findByRole("alert")).toHaveTextContent("Route provider is unavailable");
@@ -279,8 +281,8 @@ describe("RoutePlannerPage", () => {
     render(<RoutePlannerPage />);
 
     expect(screen.getByRole("heading", { name: "Plan a calmer journey" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Find routes" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Find calmer routes" })).toBeInTheDocument();
     expect(screen.getByLabelText("Open expanded route map")).toBeInTheDocument();
-    expect(screen.getByLabelText("Open navigation menu")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Current Trip" })).toBeInTheDocument();
   });
 });

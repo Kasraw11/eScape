@@ -189,6 +189,7 @@ def insert_count_if_missing(db: Session, row: dict[str, Any], stats: ImportStats
             direction_2_count=row["direction_2_count"],
             total_count=row["total_count"],
             source_record_id=row["source_record_id"],
+            data_source=row["source"],
         )
     )
     stats.counts_inserted += 1

@@ -1,5 +1,12 @@
 import { API_BASE_URL, normalizeApiBaseUrl, routeCongestionUrl, ROUTE_PLANNING_URL } from "../config/api.js";
-import { getRouteCongestion, planRoute } from "../services/api.js";
+import {
+  getPredictions,
+  getPredictiveAlerts,
+  getRefugeDetails,
+  getRouteCongestion,
+  planRoute,
+  searchRefuges,
+} from "../services/api.js";
 
 const requestPayload = {
   origin_latitude: -37.81362,
@@ -79,5 +86,34 @@ describe("route-planning API client", () => {
   it("surfaces a safe temporary congestion refresh failure", async () => {
     globalThis.fetch.mockResolvedValueOnce(mockResponse(503, { detail: "Current congestion data is temporarily unavailable" }));
     await expect(getRouteCongestion(42)).rejects.toThrow("Current congestion data is temporarily unavailable");
+  });
+
+  it("constructs validated refuge search and detail query strings", async () => {
+    globalThis.fetch
+      .mockResolvedValueOnce(mockResponse(200, { results: [] }))
+      .mockResolvedValueOnce(mockResponse(200, { refuge_id: 7 }));
+    await searchRefuges({ latitude: -37.8, longitude: 144.9, radius_m: 2000, category: "library" });
+    await getRefugeDetails(7, { latitude: -37.8, longitude: 144.9 });
+    expect(globalThis.fetch.mock.calls[0][0]).toContain("/api/refuges?latitude=-37.8&longitude=144.9&radius_m=2000&category=library");
+    expect(globalThis.fetch.mock.calls[1][0]).toContain("/api/refuges/7?latitude=-37.8&longitude=144.9");
+  });
+
+  it("requests predictions and backend-filtered temporary alert preferences", async () => {
+    globalThis.fetch
+      .mockResolvedValueOnce(mockResponse(200, { predictions: [] }))
+      .mockResolvedValueOnce(mockResponse(200, { alerts: [] }));
+    await getPredictions({ latitude: -37.8, longitude: 144.9, forecast_minutes: 60, minimum_severity: "low" });
+    await getPredictiveAlerts({ latitude: -37.8, longitude: 144.9, enabled: true, minimum_severity: "high", route_only: false });
+    expect(globalThis.fetch.mock.calls[0][0]).toContain("/api/predictions?");
+    expect(globalThis.fetch.mock.calls[0][0]).toContain("forecast_minutes=60");
+    expect(globalThis.fetch.mock.calls[1][0]).toContain("/api/alerts/predictive?");
+    expect(globalThis.fetch.mock.calls[1][0]).toContain("minimum_severity=high");
+  });
+
+  it("preserves the exact predictive-service unavailable message", async () => {
+    globalThis.fetch.mockResolvedValueOnce(mockResponse(503, { detail: "Prediction services are temporarily unavailable." }));
+    await expect(getPredictions({ latitude: -37.8, longitude: 144.9 })).rejects.toThrow(
+      "Prediction services are temporarily unavailable.",
+    );
   });
 });

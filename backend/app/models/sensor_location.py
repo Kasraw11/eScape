@@ -47,3 +47,7 @@ class SensorLocation(Base):
         "Alert",
         back_populates="sensor_location",
     )
+    sensory_predictions: Mapped[list["SensoryPrediction"]] = relationship(
+        "SensoryPrediction",
+        back_populates="sensor_location",
+    )

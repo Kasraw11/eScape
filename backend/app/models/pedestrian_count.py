@@ -48,6 +48,7 @@ class HistoricalPedestrianCount(Base):
     direction_2_count: Mapped[int | None] = mapped_column(Integer)
     total_count: Mapped[int] = mapped_column(Integer, nullable=False)
     source_record_id: Mapped[str | None] = mapped_column(String(255))
+    data_source: Mapped[str | None] = mapped_column(String(255))
 
     sensor_location: Mapped["SensorLocation"] = relationship(
         "SensorLocation",
@@ -82,6 +83,7 @@ class RealtimePedestrianCount(Base):
     direction_2_count: Mapped[int | None] = mapped_column(Integer)
     total_count: Mapped[int] = mapped_column(Integer, nullable=False)
     source_record_id: Mapped[str | None] = mapped_column(String(255))
+    data_source: Mapped[str | None] = mapped_column(String(255))
 
     sensor_location: Mapped["SensorLocation"] = relationship(
         "SensorLocation",

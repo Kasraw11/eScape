@@ -1,4 +1,12 @@
-import { API_BASE_URL, ROUTE_PLANNING_URL, routeCongestionUrl } from "../config/api.js";
+import {
+  API_BASE_URL,
+  PREDICTIONS_URL,
+  PREDICTIVE_ALERTS_URL,
+  REFUGES_URL,
+  ROUTE_PLANNING_URL,
+  refugeDetailsUrl,
+  routeCongestionUrl,
+} from "../config/api.js";
 
 function validationMessage(detail) {
   if (!Array.isArray(detail)) return null;
@@ -63,4 +71,53 @@ export async function getRouteCongestion(routeId, { signal } = {}) {
   const data = await response.json().catch(() => null);
   if (!response.ok) throw new Error(responseErrorMessage(response, data));
   return data;
+}
+
+function queryUrl(baseUrl, parameters) {
+  const query = new globalThis.URLSearchParams();
+  Object.entries(parameters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+  });
+  return `${baseUrl}?${query.toString()}`;
+}
+
+async function getJson(url, { signal, unavailableMessage } = {}) {
+  let response;
+  try {
+    response = await fetch(url, { method: "GET", headers: { Accept: "application/json" }, signal });
+  } catch (error) {
+    if (error?.name === "AbortError") throw error;
+    throw new Error(`Unable to connect to the local backend. Confirm FastAPI is running on ${API_BASE_URL}.`);
+  }
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const detail = typeof data?.detail === "string" ? data.detail : null;
+    throw new Error(detail || unavailableMessage || responseErrorMessage(response, data));
+  }
+  return data;
+}
+
+export function searchRefuges(parameters, options = {}) {
+  return getJson(queryUrl(REFUGES_URL, parameters), {
+    ...options,
+    unavailableMessage: "Refuge data is temporarily unavailable.",
+  });
+}
+
+export function getRefugeDetails(refugeId, parameters = {}, options = {}) {
+  return getJson(queryUrl(refugeDetailsUrl(refugeId), parameters), options);
+}
+
+export function getPredictions(parameters, options = {}) {
+  return getJson(queryUrl(PREDICTIONS_URL, parameters), {
+    ...options,
+    unavailableMessage: "Prediction services are temporarily unavailable.",
+  });
+}
+
+export function getPredictiveAlerts(parameters, options = {}) {
+  return getJson(queryUrl(PREDICTIVE_ALERTS_URL, parameters), {
+    ...options,
+    unavailableMessage: "Prediction services are temporarily unavailable.",
+  });
 }

@@ -18,6 +18,11 @@ class MelbournePedestrianDataError(RuntimeError):
     pass
 
 
+MELBOURNE_REALTIME_DATA_SOURCE = (
+    "City of Melbourne Open Data: pedestrian-counting-system-past-hour-counts-per-minute"
+)
+
+
 @dataclass
 class IngestionStats:
     inserted: int = 0
@@ -107,6 +112,7 @@ class PedestrianIngestionService:
                         direction_2_count=reading.direction_2_count,
                         total_count=reading.total_count,
                         source_record_id=reading.source_record_id,
+                        data_source=MELBOURNE_REALTIME_DATA_SOURCE,
                     )
                 )
                 stats.inserted += 1
@@ -116,11 +122,13 @@ class PedestrianIngestionService:
                 getattr(existing, field) != getattr(reading, field)
                 for field in ("direction_1_count", "direction_2_count", "total_count", "source_record_id")
             )
+            changed = changed or getattr(existing, "data_source", None) != MELBOURNE_REALTIME_DATA_SOURCE
             if changed:
                 existing.direction_1_count = reading.direction_1_count
                 existing.direction_2_count = reading.direction_2_count
                 existing.total_count = reading.total_count
                 existing.source_record_id = reading.source_record_id
+                existing.data_source = MELBOURNE_REALTIME_DATA_SOURCE
                 stats.updated += 1
             else:
                 stats.skipped += 1

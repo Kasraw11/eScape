@@ -1,4 +1,5 @@
 import "./globals.css";
+import AppShell from "../components/app/AppShell.jsx";
 
 export const metadata = {
   title: "eScape",
@@ -8,7 +9,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body><AppShell>{children}</AppShell></body>
     </html>
   );
 }

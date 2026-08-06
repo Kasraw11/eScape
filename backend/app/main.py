@@ -6,6 +6,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.api.routes import router as routes_router
+from app.api.refuges import router as refuges_router
+from app.api.predictions import router as predictions_router
 from app.config import settings
 from app.database import engine
 
@@ -30,6 +32,8 @@ app.add_middleware(
 )
 
 app.include_router(routes_router)
+app.include_router(refuges_router)
+app.include_router(predictions_router)
 
 
 @app.get("/")

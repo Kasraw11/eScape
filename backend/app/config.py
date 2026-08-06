@@ -9,7 +9,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 class Settings(BaseSettings):
     database_url: str = ""
     google_maps_api_key: str = ""
-    backend_cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173"
+    backend_cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     pedestrian_live_window_seconds: int = 120
     pedestrian_recent_window_seconds: int = 600
     congestion_poll_interval_seconds: int = 90
@@ -19,6 +19,18 @@ class Settings(BaseSettings):
     )
     melbourne_pedestrian_api_timeout_seconds: float = 15.0
     melbourne_pedestrian_api_limit: int = 100
+    melbourne_landmarks_api_url: str = (
+        "https://data.melbourne.vic.gov.au/api/explore/v2.1/catalog/datasets/"
+        "landmarks-and-places-of-interest-including-schools-theatres-health-services-spor/records"
+    )
+    melbourne_environmental_assets_api_url: str = (
+        "https://data.melbourne.vic.gov.au/api/explore/v2.1/catalog/datasets/"
+        "assets-for-environmental-reporting/records"
+    )
+    melbourne_refuge_api_timeout_seconds: float = 20.0
+    melbourne_refuge_api_limit: int = 100
+    prediction_model_version: str = "transparent-trend-v1"
+    prediction_default_horizon_minutes: int = 60
 
     model_config = SettingsConfigDict(
         env_file=BACKEND_ROOT / ".env",

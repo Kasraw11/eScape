@@ -4,7 +4,15 @@
 
 This schema describes the PostgreSQL data model for eScape, a sensory-aware urban navigation application for Melbourne CBD. It supports route alternatives, sensory scoring, pedestrian congestion monitoring, alerts, refuge recommendations, public-transport stop context, and journey feedback.
 
-This document is a schema-design specification only. It does not create PostgreSQL tables, SQLAlchemy models, Alembic migrations, seed data, or application features.
+The schema is implemented through SQLAlchemy models and Alembic migrations. Migration `0003` adds the Iteration 3 refuge metadata, persisted predictions, and route-optional predictive-alert links described below.
+
+## Iteration 3 additions
+
+`point_of_interest` additionally stores `source_record_id`, `accessibility_notes`, and `sensory_notes`. `(source, source_record_id)` is unique so repeatable City of Melbourne imports update rather than duplicate a place.
+
+`sensory_prediction` persists one deterministic result per `(sensor_id, prediction_for, model_version)`: predicted count, severity, confidence, generation time, source freshness, availability, limitation text, and City-source validation metadata. It references `sensor_location` with restricted deletion.
+
+`alert.route_id` is nullable for area-based predictive alerts. Predictive alerts may reference `sensory_prediction` through nullable `prediction_id`; `deduplication_key` identifies a stable sensor/forecast-window condition and `updated_at` records material refreshes. Existing route and congestion alerts remain supported.
 
 ## PostgreSQL Design Decisions
 
@@ -165,6 +173,7 @@ Stores hourly historical counts by sensor.
 | direction_2_count | INTEGER | Nullable, check greater than or equal to zero |
 | total_count | INTEGER | Not null, check greater than or equal to zero |
 | source_record_id | VARCHAR(255) | Nullable |
+| data_source | VARCHAR(255) | Nullable; row-level provenance used by prediction validation |
 
 Primary key:
 - `historical_count_id`
@@ -194,6 +203,7 @@ Stores real-time or near-real-time sensor readings. It uses a single `sensed_at`
 | direction_2_count | INTEGER | Nullable, check greater than or equal to zero |
 | total_count | INTEGER | Not null, check greater than or equal to zero |
 | source_record_id | VARCHAR(255) | Nullable |
+| data_source | VARCHAR(255) | Nullable; row-level provenance used by prediction validation |
 
 Primary key:
 - `realtime_count_id`

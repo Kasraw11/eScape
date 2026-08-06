@@ -16,6 +16,7 @@ from app.repositories.pedestrian_repository import PedestrianCountRecord, Sensor
 from app.schemas.route_planning import RouteCongestionResponse, RouteOptionResponse, RoutePlanningRequest, RouteSegmentResponse
 from app.services.data_freshness_service import DataFreshnessService
 from app.services.pedestrian_ingestion_service import (
+    MELBOURNE_REALTIME_DATA_SOURCE,
     MelbournePedestrianClient,
     MelbournePedestrianDataError,
     PedestrianIngestionService,
@@ -303,6 +304,7 @@ def test_ingestion_inserts_latest_known_sensor_and_skips_duplicates() -> None:
     assert stats.inserted == 1
     assert stats.skipped == 1
     assert isinstance(db.added[0], RealtimePedestrianCount)
+    assert db.added[0].data_source == MELBOURNE_REALTIME_DATA_SOURCE
 
 
 def test_ingestion_updates_an_existing_reading_without_duplicating_it() -> None:
@@ -325,6 +327,7 @@ def test_ingestion_updates_an_existing_reading_without_duplicating_it() -> None:
     assert stats.updated == 1
     assert stats.inserted == 0
     assert existing.total_count == 22
+    assert existing.data_source == MELBOURNE_REALTIME_DATA_SOURCE
 
 
 def test_melbourne_data_service_failure_preserves_safe_error() -> None:

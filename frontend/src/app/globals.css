@@ -24,7 +24,8 @@ body {
 
 a,
 button,
-select {
+select,
+input {
   font: inherit;
 }
 

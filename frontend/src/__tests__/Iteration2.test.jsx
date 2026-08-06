@@ -97,8 +97,9 @@ function congestionResponse(overrides = {}) {
 
 async function submit(user, routes, overrides) {
   planRoute.mockResolvedValueOnce(planResponse(routes, overrides));
-  await user.click(screen.getByRole("button", { name: "Find routes" }));
+  await user.click(screen.getByRole("button", { name: "Find calmer routes" }));
   await waitFor(() => expect(planRoute).toHaveBeenCalled());
+  await user.click(await screen.findByRole("button", { name: new RegExp(`Select route 1, ${routes[0].route_identifier}`, "i") }));
 }
 
 function HookHarness({ routeId = 11, intervalMs = 1_000 }) {
@@ -153,8 +154,9 @@ describe("Iteration 2 route experience", () => {
     const user = userEvent.setup();
     render(<RoutePlannerPage />);
     await submit(user, [route()]);
+    await user.click(screen.getByRole("button", { name: "Start Trip" }));
     await waitFor(() => expect(getRouteCongestion).toHaveBeenCalledWith(11, expect.objectContaining({ signal: expect.anything() })));
-    expect(screen.getByText("Congestion monitoring active")).toBeInTheDocument();
+    expect(screen.getByText(/Trip started/)).toBeInTheDocument();
   });
 
   it("aborts congestion polling when the results component unmounts", async () => {
@@ -210,6 +212,7 @@ describe("Iteration 2 route experience", () => {
     }));
     render(<RoutePlannerPage />);
     await submit(user, [route()]);
+    await user.click(screen.getByRole("button", { name: "Start Trip" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Segment 1 is now high congestion");
     await user.click(screen.getByRole("button", { name: "Dismiss update" }));
     expect(screen.queryByText("Route segment 1 changed")).not.toBeInTheDocument();
