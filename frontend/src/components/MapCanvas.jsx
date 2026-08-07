@@ -55,10 +55,11 @@ function routePath(route) {
 function routeStyle(route, selected) {
   const indicator = (route.sensory_indicator || "unavailable").toLowerCase();
   const unavailable = indicator === "unavailable";
-  const high = indicator === "high" || indicator === "medium";
+  const moderate = indicator === "moderate" || indicator === "medium";
+  const high = indicator === "high";
 
   return {
-    strokeColor: unavailable ? "#64748b" : high ? "#dc2626" : "#15803d",
+    strokeColor: unavailable ? "#64748b" : high ? "#DC4949" : moderate ? "#E49A1A" : "#2F9478",
     strokeOpacity: unavailable ? 0 : selected ? 0.98 : 0.58,
     strokeWeight: selected ? 7 : 4,
     zIndex: selected ? 3 : route.is_recommended ? 2 : 1,
@@ -71,9 +72,10 @@ function routeStyle(route, selected) {
 function segmentStyle(segment, route, selected) {
   const level = (segment.congestion_level || "unavailable").toLowerCase();
   const unavailable = level === "unavailable" || segment.data_availability === "unavailable";
+  const moderate = level === "moderate" || level === "medium";
   const high = level === "high";
   return {
-    strokeColor: unavailable ? "#64748b" : high ? "#dc2626" : "#15803d",
+    strokeColor: unavailable ? "#64748b" : high ? "#DC4949" : moderate ? "#E49A1A" : "#2F9478",
     strokeOpacity: unavailable ? 0 : selected ? 0.98 : 0.64,
     strokeWeight: selected ? 7 : route.is_recommended ? 5 : 4,
     zIndex: selected ? 4 : route.is_recommended ? 3 : 2,

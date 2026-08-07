@@ -11,6 +11,7 @@ import { getRouteCongestion, planRoute } from "../services/api.js";
 jest.mock("../services/api.js", () => ({
   getRouteCongestion: jest.fn(),
   planRoute: jest.fn(),
+  submitJourneyFeedback: jest.fn(),
 }));
 
 
@@ -97,7 +98,7 @@ function congestionResponse(overrides = {}) {
 
 async function submit(user, routes, overrides) {
   planRoute.mockResolvedValueOnce(planResponse(routes, overrides));
-  await user.click(screen.getByRole("button", { name: "Find calmer routes" }));
+  await user.click(screen.getByRole("button", { name: "Find routes" }));
   await waitFor(() => expect(planRoute).toHaveBeenCalled());
   await user.click(await screen.findByRole("button", { name: new RegExp(`Select route 1, ${routes[0].route_identifier}`, "i") }));
 }
@@ -125,18 +126,18 @@ describe("Iteration 2 route experience", () => {
     jest.useRealTimers();
   });
 
-  it("renders the five-level crowd-threshold control", () => {
+  it("renders the route preference control backed by the five crowd thresholds", () => {
     render(<RoutePlannerPage />);
-    const threshold = screen.getByRole("combobox", { name: /Crowd tolerance/ });
-    expect(threshold).toHaveValue("3");
-    expect(screen.getByRole("option", { name: /1 .* Very low tolerance/ })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: /5 .* Highest tolerance/ })).toBeInTheDocument();
+    const preference = screen.getByRole("combobox", { name: "Route preference" });
+    expect(preference).toHaveValue("3");
+    expect(screen.getByRole("option", { name: /Quietest available/ })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Most direct options/ })).toBeInTheDocument();
   });
 
   it("sends the selected threshold in the route-planning request", async () => {
     const user = userEvent.setup();
     render(<RoutePlannerPage />);
-    await user.selectOptions(screen.getByRole("combobox", { name: /Crowd tolerance/ }), "1");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Route preference" }), "1");
     await submit(user, [route()]);
     expect(planRoute).toHaveBeenCalledWith(expect.objectContaining({ preferred_crowd_threshold: 1 }));
   });
@@ -145,6 +146,7 @@ describe("Iteration 2 route experience", () => {
     const user = userEvent.setup();
     render(<RoutePlannerPage />);
     await submit(user, [route()]);
+    await user.click(screen.getByText("View details"));
     expect(screen.getByText("live")).toBeInTheDocument();
     expect(screen.getByText(/Meets crowd preference level 3/)).toBeInTheDocument();
     expect(screen.getByText(/Last updated/)).toBeInTheDocument();
@@ -154,7 +156,7 @@ describe("Iteration 2 route experience", () => {
     const user = userEvent.setup();
     render(<RoutePlannerPage />);
     await submit(user, [route()]);
-    await user.click(screen.getByRole("button", { name: "Start Trip" }));
+    await user.click(screen.getByRole("button", { name: "Start journey" }));
     await waitFor(() => expect(getRouteCongestion).toHaveBeenCalledWith(11, expect.objectContaining({ signal: expect.anything() })));
     expect(screen.getByText(/Trip started/)).toBeInTheDocument();
   });
@@ -212,7 +214,7 @@ describe("Iteration 2 route experience", () => {
     }));
     render(<RoutePlannerPage />);
     await submit(user, [route()]);
-    await user.click(screen.getByRole("button", { name: "Start Trip" }));
+    await user.click(screen.getByRole("button", { name: "Start journey" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Segment 1 is now high congestion");
     await user.click(screen.getByRole("button", { name: "Dismiss update" }));
     expect(screen.queryByText("Route segment 1 changed")).not.toBeInTheDocument();
@@ -301,8 +303,8 @@ describe("Iteration 2 route experience", () => {
       segment({ route_segment_id: 3, segment_sequence: 3, congestion_level: null, data_availability: "unavailable" }),
     ] })]} selectedRouteIdentifier="calm-route" />);
     await waitFor(() => expect(window.google.maps.Polyline).toHaveBeenCalledTimes(3));
-    expect(polylineInstances.map((item) => item.options.strokeColor)).toEqual(["#15803d", "#dc2626", "#64748b"]);
-    expect(screen.getByText("High-congestion corridor")).toBeInTheDocument();
-    expect(screen.getByText("Congestion unavailable")).toBeInTheDocument();
+    expect(polylineInstances.map((item) => item.options.strokeColor)).toEqual(["#2F9478", "#DC4949", "#64748b"]);
+    expect(screen.getByText("High")).toBeInTheDocument();
+    expect(screen.getByText("Unavailable")).toBeInTheDocument();
   });
 });

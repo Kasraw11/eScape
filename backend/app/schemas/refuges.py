@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class RefugeCategory(str, Enum):
@@ -51,3 +51,38 @@ class RefugeSearchResponse(BaseModel):
     radius_m: int
     selected_datetime: datetime
     message: str | None = None
+
+
+class RefugeCrowdingLevel(str, Enum):
+    LOW = "low"
+    MODERATE = "moderate"
+    HIGH = "high"
+
+
+class RefugeComfortLevel(str, Enum):
+    YES = "yes"
+    SOMEWHAT = "somewhat"
+    NO = "no"
+
+
+class RefugeFeedbackCreate(BaseModel):
+    quietness_score: int = Field(ge=1, le=5)
+    crowding_level: RefugeCrowdingLevel
+    comfort_level: RefugeComfortLevel
+    comment: str | None = Field(default=None, max_length=300)
+
+
+class RefugeFeedbackCreated(BaseModel):
+    feedback_id: int
+    refuge_id: int
+    created_at: datetime
+
+
+class RefugeFeedbackSummary(BaseModel):
+    refuge_id: int
+    response_count: int
+    average_quietness: float | None = None
+    quiet_percentage: int | None = None
+    comfortable_percentage: int | None = None
+    low_crowding_percentage: int | None = None
+    crowding_distribution: dict[str, int]

@@ -16,8 +16,8 @@ function formatTime(value) {
 function timelineSection(value) {
   const minutes = (new Date(value).getTime() - Date.now()) / 60_000;
   if (minutes <= 10) return "Now";
-  if (minutes <= 30) return "Next 30 minutes";
-  return "Next hour";
+  if (minutes <= 30) return "In 30 minutes";
+  return "In 60 minutes";
 }
 
 function deduplicateAlerts(alerts) {
@@ -100,7 +100,7 @@ export default function AlertsPage() {
     () => deduplicateAlerts(alerts).filter((alert) => !dismissed.has(alert.deduplication_key || String(alert.alert_id))),
     [alerts, dismissed],
   );
-  const sections = useMemo(() => ["Now", "Next 30 minutes", "Next hour"].map((title) => ({
+  const sections = useMemo(() => ["Now", "In 30 minutes", "In 60 minutes"].map((title) => ({
     title,
     alerts: visibleAlerts.filter((alert) => timelineSection(alert.predicted_time) === title),
   })), [visibleAlerts]);
@@ -120,14 +120,10 @@ export default function AlertsPage() {
 
   return (
     <div className="iteration-page page-stack alerts-app">
-        <section className="iteration-hero glass-panel">
-          <p className="section-kicker">Next-hour crowd forecast</p>
-          <h1>Plan around likely crowded areas</h1>
-          <p>Predictions are deterministic estimates from current counts, recent trend, and the matching City of Melbourne weekday/hour history. They are not guarantees.</p>
-        </section>
+        <header className="page-heading"><p className="section-kicker">Next hour</p><h1>Alerts</h1><p>See likely crowding before it affects your journey.</p></header>
 
         <section className="control-panel glass-panel" aria-labelledby="alert-preferences-heading">
-          <div className="results-heading"><div><h2 id="alert-preferences-heading">Predictive alert preferences</h2><p>These settings are temporary for this browser page and are filtered by the backend.</p></div><button type="button" onClick={() => setRefreshToken((value) => value + 1)}>Refresh predictions</button></div>
+          <div className="results-heading"><div><h2 id="alert-preferences-heading">Alert preferences</h2><p>These settings are temporary.</p></div><button type="button" onClick={() => setRefreshToken((value) => value + 1)}>Refresh predictions</button></div>
           <div className="preference-grid">
             <label className="checkbox-control"><input type="checkbox" checked={preferences.enabled} onChange={(event) => updatePreference("enabled", event.target.checked)} /> Enable predictive alerts</label>
             <label>Minimum severity<select aria-label="Minimum severity" value={preferences.minimumSeverity} onChange={(event) => updatePreference("minimumSeverity", event.target.value)}><option value="low">Low</option><option value="moderate">Moderate</option><option value="high">High</option></select></label>
@@ -151,12 +147,11 @@ export default function AlertsPage() {
               <h3 id={`timeline-${section.title.replaceAll(" ", "-")}`}>{section.title}</h3>
               {section.alerts.map((alert) => <article className="predictive-alert-card" key={alert.deduplication_key || alert.alert_id}>
                 <div className="card-title-row"><div><span className={`severity-badge severity-badge--${alert.severity.toLowerCase()}`}>{alert.severity}</span><h4>{alert.location_name}</h4></div><strong>{formatTime(alert.predicted_time)}</strong></div>
-                <p><strong>{alert.confidence} confidence</strong> · {alert.data_freshness} source data</p>
-                <p>{alert.route_impact}</p><p>{alert.message}</p>
-                <p className="updated-copy">Last updated {formatTime(alert.updated_at)}</p>
+                <p><strong>{alert.confidence} confidence</strong></p><p>{alert.route_impact}</p>
+                <details className="prediction-details"><summary>Prediction details</summary><p>{alert.data_freshness} source data</p><p>{alert.message}</p><p className="updated-copy">Last updated {formatTime(alert.updated_at)}</p></details>
                 <div className="card-actions">
                   <button type="button" onClick={() => setSelectedId(alert.prediction_id)}>View on map</button>
-                  <Link href="/plan">Review alternative</Link>
+                  <Link href="/plan" aria-label="Review alternative">View alternative options</Link>
                   <button type="button" onClick={() => setDismissed((current) => new Set(current).add(alert.deduplication_key || String(alert.alert_id)))}>Dismiss</button>
                 </div>
               </article>)}
@@ -172,10 +167,7 @@ export default function AlertsPage() {
           />
         </div>
 
-        <section className="method-panel glass-panel" aria-labelledby="prediction-method-heading">
-          <h2 id="prediction-method-heading">How to read this forecast</h2>
-          <p>Low-confidence estimates are explicitly labelled. Missing historical or current data is shown as unavailable, not converted into a Low forecast. Weather, events and unexpected sensor outages are not modelled.</p>
-        </section>
+        <details className="method-panel glass-panel"><summary><span id="prediction-method-heading">How to read this forecast</span></summary><p>Low-confidence estimates are labelled. Missing information remains unavailable rather than appearing as a calm forecast.</p></details>
     </div>
   );
 }

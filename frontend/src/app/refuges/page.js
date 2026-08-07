@@ -1,4 +1,4 @@
-import RefugesPage from "../../components/RefugesPage.jsx";
+import RefugesPage from "../../components/RefugesPageApproved.jsx";
 
 export const metadata = {
   title: "Find sensory refuges | eScape",

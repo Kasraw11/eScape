@@ -1,4 +1,4 @@
-import { API_BASE_URL, normalizeApiBaseUrl, routeCongestionUrl, ROUTE_PLANNING_URL } from "../config/api.js";
+import { API_BASE_URL, FEEDBACK_URL, normalizeApiBaseUrl, routeCongestionUrl, ROUTE_PLANNING_URL } from "../config/api.js";
 import {
   getPredictions,
   getPredictiveAlerts,
@@ -6,6 +6,7 @@ import {
   getRouteCongestion,
   planRoute,
   searchRefuges,
+  submitJourneyFeedback,
 } from "../services/api.js";
 
 const requestPayload = {
@@ -46,6 +47,19 @@ describe("route-planning API client", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestPayload),
+    });
+  });
+
+  it("submits optional journey feedback to the configured endpoint", async () => {
+    const feedback = { route_id: 42, sensory_rating: 5, crowd_rating: 4, comments: "Clear route" };
+    globalThis.fetch.mockResolvedValueOnce(mockResponse(201, { feedback_id: 8 }));
+
+    await expect(submitJourneyFeedback(feedback)).resolves.toEqual({ feedback_id: 8 });
+    expect(FEEDBACK_URL).toBe("http://127.0.0.1:8000/api/feedback");
+    expect(globalThis.fetch).toHaveBeenCalledWith(FEEDBACK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(feedback),
     });
   });
 

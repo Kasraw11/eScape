@@ -45,6 +45,8 @@ export default function RefugesPage() {
   const [radius, setRadius] = useState(1000);
   const [selectedDateTime, setSelectedDateTime] = useState(localDateTimeValue);
   const [enabledCategories, setEnabledCategories] = useState(new Set(CATEGORIES));
+  const [refugeQuery, setRefugeQuery] = useState("");
+  const [openOnly, setOpenOnly] = useState(false);
   const [refuges, setRefuges] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [details, setDetails] = useState(null);
@@ -113,8 +115,10 @@ export default function RefugesPage() {
   }, [location, radius, selectedDateTime]);
 
   const visibleRefuges = useMemo(
-    () => refuges.filter((item) => enabledCategories.has(item.category)),
-    [enabledCategories, refuges],
+    () => refuges.filter((item) => enabledCategories.has(item.category)
+      && item.name.toLowerCase().includes(refugeQuery.trim().toLowerCase())
+      && (!openOnly || item.opening_status === "open")),
+    [enabledCategories, openOnly, refugeQuery, refuges],
   );
   const selected = details || visibleRefuges.find((item) => item.refuge_id === selectedId) || null;
   const mapPoints = useMemo(() => visibleRefuges.map((item) => ({
@@ -196,11 +200,7 @@ export default function RefugesPage() {
 
   return (
     <div className="iteration-page page-stack refuge-app">
-        <section className="iteration-hero glass-panel">
-          <p className="section-kicker">Sensory refuge discovery</p>
-          <h1>Find a potential quiet place nearby</h1>
-          <p>Parks and libraries can provide a break, but quietness is not guaranteed. Results use recorded City of Melbourne place categories.</p>
-        </section>
+        <header className="page-heading"><p className="section-kicker">Nearby spaces</p><h1>Find Refuges</h1><p>Find a potential quiet place nearby. Conditions can change.</p></header>
 
         <section className="control-panel glass-panel" aria-labelledby="location-heading">
           <div><h2 id="location-heading">Choose where to search</h2><p>Location is used only to order nearby candidates by distance.</p></div>
@@ -217,8 +217,11 @@ export default function RefugesPage() {
         </section>
 
         <section className="control-panel glass-panel" aria-labelledby="refuge-filters-heading">
-          <h2 id="refuge-filters-heading">Refine refuge candidates</h2>
+          <div className="results-heading"><div><h2 id="refuge-filters-heading">Filters</h2><p>Choose what is useful now.</p></div></div>
           <div className="filter-grid">
+            <label>Search
+              <input type="search" value={refugeQuery} onChange={(event) => setRefugeQuery(event.target.value)} placeholder="Search refuge name" />
+            </label>
             <label>Search radius
               <select aria-label="Search radius" value={radius} onChange={(event) => setRadius(Number(event.target.value))}>
                 <option value="500">500 metres</option><option value="1000">1 kilometre</option><option value="2000">2 kilometres</option><option value="5000">5 kilometres</option>
@@ -228,6 +231,7 @@ export default function RefugesPage() {
               <input aria-label="Selected date and time" type="datetime-local" value={selectedDateTime} onChange={(event) => setSelectedDateTime(event.target.value)} required />
             </label>
           </div>
+          <label className="checkbox-control open-now-filter"><input type="checkbox" checked={openOnly} onChange={(event) => setOpenOnly(event.target.checked)} /> Open now</label>
           <fieldset className="category-filters"><legend>Categories</legend>{CATEGORIES.map((category) => (
             <label key={category}><input type="checkbox" checked={enabledCategories.has(category)} onChange={() => toggleCategory(category)} /> {category}</label>
           ))}</fieldset>
@@ -237,7 +241,7 @@ export default function RefugesPage() {
           <section className="refuge-results glass-panel" aria-labelledby="refuge-results-heading">
             <div className="results-heading"><div><p className="section-kicker">Nearest first</p><h2 id="refuge-results-heading">Refuge candidates</h2></div><span>{visibleRefuges.length} shown</span></div>
             <div aria-live="polite">{loading ? <p>Searching nearby refuge candidates…</p> : null}{error ? <p className="error-state" role="alert">{error}</p> : null}</div>
-            {!loading && !error && visibleRefuges.length === 0 ? <div className="empty-state"><h3>No refuge candidates found</h3><p>{emptyMessage || "No matching categories are visible. Select more categories or increase the search radius."}</p></div> : null}
+            {!loading && !error && visibleRefuges.length === 0 ? <div className="empty-state"><h3>No nearby refuge locations were found</h3><p>{emptyMessage || "Change the search, select more categories, or increase the distance."}</p></div> : null}
             <div className="refuge-list">{visibleRefuges.map((item) => (
               <article key={item.refuge_id} className={`refuge-card ${item.refuge_id === selectedId ? "refuge-card--selected" : ""}`}>
                 <div className="card-title-row"><div><span className="status-badge">{item.category}</span><h3>{item.name}</h3></div><span>{item.distance_m} m</span></div>

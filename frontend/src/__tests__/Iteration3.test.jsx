@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 
 import AlertsPage, { deduplicateAlerts } from "../components/AlertsPage.jsx";
 import PointMapPanel from "../components/PointMapPanel.jsx";
-import RefugesPage from "../components/RefugesPage.jsx";
+import RefugesPage from "../components/RefugesPageApproved.jsx";
 import {
   getPredictions,
   getPredictiveAlerts,
@@ -131,7 +131,7 @@ describe("Iteration 3 refuge discovery", () => {
 
   it("renders the refuge page and asks for location only after a clear action", () => {
     render(<RefugesPage />);
-    expect(screen.getByRole("heading", { name: "Find a potential quiet place nearby" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Find Refuges" })).toBeInTheDocument();
     expect(screen.getByText(/Location is used only to order/)).toBeInTheDocument();
     expect(globalThis.navigator.geolocation.getCurrentPosition).not.toHaveBeenCalled();
   });
@@ -197,7 +197,7 @@ describe("Iteration 3 refuge discovery", () => {
     searchRefuges.mockResolvedValue(refugeResponse([], "No sensory refuge candidates were found within this radius. Try increasing the search radius."));
     render(<RefugesPage />);
     await user.click(screen.getByRole("button", { name: "Use selected location" }));
-    expect(await screen.findByRole("heading", { name: "No refuge candidates found" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "No nearby refuge locations were found" })).toBeInTheDocument();
     expect(screen.getByText(/increasing the search radius/)).toBeInTheDocument();
   });
 

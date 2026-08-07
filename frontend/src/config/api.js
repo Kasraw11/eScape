@@ -10,6 +10,7 @@ export const ROUTE_PLANNING_URL = `${API_BASE_URL}/api/routes/plan`;
 export const REFUGES_URL = `${API_BASE_URL}/api/refuges`;
 export const PREDICTIONS_URL = `${API_BASE_URL}/api/predictions`;
 export const PREDICTIVE_ALERTS_URL = `${API_BASE_URL}/api/alerts/predictive`;
+export const FEEDBACK_URL = `${API_BASE_URL}/api/feedback`;
 
 export function routeCongestionUrl(routeId) {
   return `${API_BASE_URL}/api/routes/${encodeURIComponent(routeId)}/congestion`;
@@ -17,6 +18,14 @@ export function routeCongestionUrl(routeId) {
 
 export function refugeDetailsUrl(refugeId) {
   return `${REFUGES_URL}/${encodeURIComponent(refugeId)}`;
+}
+
+export function refugeFeedbackUrl(refugeId) {
+  return `${refugeDetailsUrl(refugeId)}/feedback`;
+}
+
+export function refugeFeedbackSummaryUrl(refugeId) {
+  return `${refugeFeedbackUrl(refugeId)}/summary`;
 }
 
 const configuredPollInterval = Number(process.env.NEXT_PUBLIC_CONGESTION_POLL_INTERVAL_MS);

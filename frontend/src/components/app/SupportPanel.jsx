@@ -1,34 +1,26 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useState } from "react";
+import AccessibleDialog from "../AccessibleDialog.jsx";
 
-const FOCUSABLE = "a[href],button:not([disabled]),[tabindex]:not([tabindex='-1'])";
+export default function SupportPanel({ open, onClose, returnFocusRef, onEmergency }) {
+  const [section, setSection] = useState("");
+  const contactUrl = process.env.NEXT_PUBLIC_SUPPORT_URL?.trim();
 
-export default function SupportPanel({ open, onClose, returnFocusRef }) {
-  const panelRef = useRef(null);
-  const closeRef = useRef(null);
-  useEffect(() => {
-    if (!open) return undefined;
-    closeRef.current?.focus();
-    const onKeyDown = (event) => {
-      if (event.key === "Escape") { event.preventDefault(); onClose(); return; }
-      if (event.key !== "Tab" || !panelRef.current) return;
-      const items = [...panelRef.current.querySelectorAll(FOCUSABLE)];
-      if (!items.length) return;
-      if (event.shiftKey && document.activeElement === items[0]) { event.preventDefault(); items.at(-1).focus(); }
-      if (!event.shiftKey && document.activeElement === items.at(-1)) { event.preventDefault(); items[0].focus(); }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => { document.removeEventListener("keydown", onKeyDown); returnFocusRef.current?.focus(); };
-  }, [onClose, open, returnFocusRef]);
-  if (!open) return null;
   return (
-    <div className="support-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section className="support-panel" role="dialog" aria-modal="true" aria-labelledby="support-title" ref={panelRef}>
-        <div className="support-panel__heading"><div><p className="section-kicker">Support</p><h2 id="support-title">How can we help?</h2></div><button ref={closeRef} type="button" onClick={onClose} aria-label="Close support">×</button></div>
-        <div className="support-options"><a href="#help">View help</a><a href="mailto:support@example.invalid?subject=eScape%20problem">Report a problem</a><a href="mailto:support@example.invalid">Contact support</a></div>
-        <div className="emergency-note"><strong>Need immediate assistance?</strong><p>Contact the appropriate local emergency service. eScape provides access to support options but does not operate emergency services.</p></div>
-      </section>
-    </div>
+    <AccessibleDialog open={open} onClose={onClose} titleId="support-title" className="support-panel" returnFocusRef={returnFocusRef}>
+      <header className="dialog-heading"><div><p className="section-kicker">Support</p><h2 id="support-title">How can we help?</h2></div><button type="button" className="dialog-close" onClick={onClose} aria-label="Close support">×</button></header>
+      <div className="support-options">
+        <button type="button" onClick={() => setSection("help")}>View help</button>
+        <button type="button" onClick={() => setSection("report")}>Report a problem</button>
+        {contactUrl ? <a href={contactUrl}>Contact support</a> : <button type="button" onClick={() => setSection("contact")}>Contact support</button>}
+      </div>
+      <div className="support-detail" aria-live="polite">
+        {section === "help" ? <p>Plan a route, select it, then choose Start Trip. Maps and crowd information show an unavailable label when live services cannot be reached.</p> : null}
+        {section === "report" ? <p>A report service is not configured. Note what happened and use the configured support link when available.</p> : null}
+        {section === "contact" ? <p>No support contact link is configured for this environment.</p> : null}
+      </div>
+      <div className="emergency-note"><strong>Need immediate assistance?</strong><p>Emergency support is separate from general help.</p><button type="button" onClick={onEmergency}>Open emergency assistance</button></div>
+    </AccessibleDialog>
   );
 }

@@ -1,8 +1,12 @@
 "use client";
 
 import { useRef } from "react";
+import AppIcon from "./app/AppIcon.jsx";
 
-const TABS = [{ id: "journey", label: "Plan Journey" }, { id: "trip", label: "Current Trip" }];
+const TABS = [
+  { id: "journey", label: "Plan your journey", icon: "route" },
+  { id: "trip", label: "Current trip", icon: "transit" },
+];
 
 export default function PlanPageTabs({ activeTab, onChange }) {
   const refs = useRef([]);
@@ -11,5 +15,5 @@ export default function PlanPageTabs({ activeTab, onChange }) {
     event.preventDefault();
     const next = event.key === "Home" ? 0 : event.key === "End" ? TABS.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + TABS.length) % TABS.length;
     onChange(TABS[next].id); refs.current[next]?.focus();
-  }}>{tab.label}</button>)}</div>;
+  }}><AppIcon name={tab.icon} size={19} />{tab.label}</button>)}</div>;
 }

@@ -1,6 +1,8 @@
+import AppIcon from "./app/AppIcon.jsx";
+
 const MODES = [
-  { value: "walking", label: "Walking", symbol: "W" },
-  { value: "transit", label: "Public transport", symbol: "PT" },
+  { value: "walking", label: "Walking", icon: "walk" },
+  { value: "transit", label: "Public transport", icon: "transit" },
 ];
 
 export default function TravelModeSelector({ value, onChange, disabled, error }) {
@@ -17,7 +19,7 @@ export default function TravelModeSelector({ value, onChange, disabled, error })
             aria-pressed={value === mode.value}
             disabled={disabled}
           >
-            <span className="travel-mode__symbol" aria-hidden="true">{mode.symbol}</span>
+            <span className="travel-mode__symbol" aria-hidden="true"><AppIcon name={mode.icon} size={21} /></span>
             {mode.label}
           </button>
         ))}

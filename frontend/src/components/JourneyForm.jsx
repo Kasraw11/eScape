@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import CrowdToleranceSelector from "./CrowdToleranceSelector.jsx";
 import LocationInput from "./LocationInput.jsx";
 import TravelModeSelector from "./TravelModeSelector.jsx";
 
@@ -50,9 +51,9 @@ export default function JourneyForm({ onSubmit, loading }) {
   }
 
   return <form className="journey-form" onSubmit={submit} noValidate aria-label="Journey planner"><div className="field-grid">
-    <LocationInput label="Origin" value={originText} placeholder="Enter starting location" suggestions={CBD_LOCATIONS} selectedPlace={origin} loading={loading} error={submitted ? errors.origin : ""} showCurrentLocation onChange={(value) => { setOriginText(value); setOrigin(null); }} onSelectSuggestion={(place) => { setOrigin(place); setOriginText(place.label); }} onClear={() => { setOrigin(null); setOriginText(""); }} onUseCurrentLocation={useCurrentLocation} />
-    <LocationInput label="Destination" value={destinationText} placeholder="Enter destination" suggestions={CBD_LOCATIONS} selectedPlace={destination} loading={loading} error={submitted ? errors.destination : ""} onChange={(value) => { setDestinationText(value); setDestination(null); }} onSelectSuggestion={(place) => { setDestination(place); setDestinationText(place.label); }} onClear={() => { setDestination(null); setDestinationText(""); }} />
+    <LocationInput label="From" accessibleLabel="Origin" value={originText} placeholder="Enter starting location" suggestions={CBD_LOCATIONS} selectedPlace={origin} loading={loading} error={submitted ? errors.origin : ""} showCurrentLocation onChange={(value) => { setOriginText(value); setOrigin(null); }} onSelectSuggestion={(place) => { setOrigin(place); setOriginText(place.label); }} onClear={() => { setOrigin(null); setOriginText(""); }} onUseCurrentLocation={useCurrentLocation} />
+    <LocationInput label="To" accessibleLabel="Destination" value={destinationText} placeholder="Enter destination" suggestions={CBD_LOCATIONS} selectedPlace={destination} loading={loading} error={submitted ? errors.destination : ""} onChange={(value) => { setDestinationText(value); setDestination(null); }} onSelectSuggestion={(place) => { setDestination(place); setDestinationText(place.label); }} onClear={() => { setDestination(null); setDestinationText(""); }} />
     <TravelModeSelector value={travelMode} onChange={setTravelMode} disabled={loading} error={submitted ? errors.travelMode : undefined} />
-    <label className="form-field form-field--threshold"><span>Crowd tolerance</span><select value={crowdThreshold} onChange={(event) => setCrowdThreshold(Number(event.target.value))} disabled={loading} aria-describedby="crowd-threshold-help"><option value={1}>1 - Very low tolerance</option><option value={2}>2 - Low tolerance</option><option value={3}>3 - Moderate tolerance</option><option value={4}>4 - Higher tolerance</option><option value={5}>5 - Highest tolerance</option></select><small id="crowd-threshold-help">Lower levels prefer calmer corridors. The backend applies the exact score limit.</small>{submitted && errors.crowdThreshold ? <strong className="field-error">{errors.crowdThreshold}</strong> : null}</label>
-  </div>{locationNotice ? <p className="field-notice" role="status">{locationNotice}</p> : null}<button className="primary-button" type="submit" disabled={loading}>{loading ? "Finding calmer routes…" : "Find calmer routes"}</button><div className="sr-only" aria-live="assertive">{submitted ? Object.values(errors).join(" ") : ""}</div></form>;
+    <CrowdToleranceSelector value={crowdThreshold} onChange={setCrowdThreshold} disabled={loading} error={submitted ? errors.crowdThreshold : ""} />
+  </div>{locationNotice ? <p className="field-notice" role="status">{locationNotice}</p> : null}<button className="primary-button journey-form__submit" type="submit" disabled={loading}>{loading ? "Finding routes…" : <><span>Find routes</span><span aria-hidden="true">→</span></>}</button><p className="planner-data-note">Routes use real-time and historical sensory data when available.</p><div className="sr-only" aria-live="assertive">{submitted ? Object.values(errors).join(" ") : ""}</div></form>;
 }

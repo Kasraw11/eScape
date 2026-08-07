@@ -1,10 +1,13 @@
 import {
   API_BASE_URL,
+  FEEDBACK_URL,
   PREDICTIONS_URL,
   PREDICTIVE_ALERTS_URL,
   REFUGES_URL,
   ROUTE_PLANNING_URL,
   refugeDetailsUrl,
+  refugeFeedbackSummaryUrl,
+  refugeFeedbackUrl,
   routeCongestionUrl,
 } from "../config/api.js";
 
@@ -108,6 +111,29 @@ export function getRefugeDetails(refugeId, parameters = {}, options = {}) {
   return getJson(queryUrl(refugeDetailsUrl(refugeId), parameters), options);
 }
 
+export function getRefugeFeedbackSummary(refugeId, options = {}) {
+  return getJson(refugeFeedbackSummaryUrl(refugeId), {
+    ...options,
+    unavailableMessage: "Community feedback is temporarily unavailable.",
+  });
+}
+
+export async function submitRefugeFeedback(refugeId, payload) {
+  let response;
+  try {
+    response = await fetch(refugeFeedbackUrl(refugeId), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    throw new Error("Unable to connect to the local backend.");
+  }
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(responseErrorMessage(response, data));
+  return data;
+}
+
 export function getPredictions(parameters, options = {}) {
   return getJson(queryUrl(PREDICTIONS_URL, parameters), {
     ...options,
@@ -120,4 +146,20 @@ export function getPredictiveAlerts(parameters, options = {}) {
     ...options,
     unavailableMessage: "Prediction services are temporarily unavailable.",
   });
+}
+
+export async function submitJourneyFeedback(payload) {
+  let response;
+  try {
+    response = await fetch(FEEDBACK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    throw new Error("Unable to connect to the local backend.");
+  }
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(responseErrorMessage(response, data));
+  return data;
 }

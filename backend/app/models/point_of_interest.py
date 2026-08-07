@@ -38,3 +38,8 @@ class PointOfInterest(Base):
         "RouteRefugeRecommendation",
         back_populates="point_of_interest",
     )
+    community_feedback: Mapped[list["RefugeFeedback"]] = relationship(
+        "RefugeFeedback",
+        back_populates="refuge",
+        cascade="all, delete-orphan",
+    )

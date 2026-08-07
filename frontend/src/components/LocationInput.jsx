@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { hasConfiguredMapsKey, loadGoogleMaps } from "../services/googleMapsLoader.js";
 
-export default function LocationInput({ label, value, placeholder, suggestions = [], selectedPlace, loading, error, showCurrentLocation = false, onChange, onSelectSuggestion, onClear, onUseCurrentLocation }) {
+export default function LocationInput({ label, accessibleLabel, value, placeholder, suggestions = [], selectedPlace, loading, error, showCurrentLocation = false, onChange, onSelectSuggestion, onClear, onUseCurrentLocation }) {
   const id = useId();
   const listId = `${id}-suggestions`;
   const [remoteSuggestions, setRemoteSuggestions] = useState([]);
@@ -53,12 +53,12 @@ export default function LocationInput({ label, value, placeholder, suggestions =
     }).catch(() => setNotice("That location could not be resolved. Manual typing remains available."));
   }
 
-  return <div className="location-input form-field"><label htmlFor={id}>{label}</label><div className="location-input__control"><input id={id} role="combobox" aria-autocomplete="list" aria-expanded={open && visibleSuggestions.length > 0} aria-controls={listId} aria-activedescendant={activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined} aria-invalid={Boolean(error)} aria-describedby={[error ? `${id}-error` : "", notice ? `${id}-notice` : ""].filter(Boolean).join(" ") || undefined} value={value} placeholder={placeholder} disabled={loading} autoComplete="off" onChange={(event) => { onChange(event.target.value); setOpen(true); setActiveIndex(-1); }} onFocus={() => visibleSuggestions.length && setOpen(true)} onKeyDown={(event) => {
+  return <div className="location-input form-field"><label htmlFor={id}>{label}</label><div className="location-input__control"><input id={id} aria-label={accessibleLabel} role="combobox" aria-autocomplete="list" aria-expanded={open && visibleSuggestions.length > 0} aria-controls={listId} aria-activedescendant={activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined} aria-invalid={Boolean(error)} aria-describedby={[error ? `${id}-error` : "", notice ? `${id}-notice` : ""].filter(Boolean).join(" ") || undefined} value={value} placeholder={placeholder} disabled={loading} autoComplete="off" onChange={(event) => { onChange(event.target.value); setOpen(true); setActiveIndex(-1); }} onFocus={() => visibleSuggestions.length && setOpen(true)} onKeyDown={(event) => {
     if (event.key === "ArrowDown" && visibleSuggestions.length) { event.preventDefault(); setOpen(true); setActiveIndex((current) => Math.min(current + 1, visibleSuggestions.length - 1)); }
     if (event.key === "ArrowUp" && visibleSuggestions.length) { event.preventDefault(); setActiveIndex((current) => Math.max(current - 1, 0)); }
     if (event.key === "Enter" && activeIndex >= 0) { event.preventDefault(); select(visibleSuggestions[activeIndex]); }
     if (event.key === "Escape") { setOpen(false); setActiveIndex(-1); }
-  }} />{value ? <button type="button" className="location-input__clear" onClick={onClear} aria-label={`Clear ${label.toLowerCase()}`}>×</button> : null}</div>
+  }} />{value ? <button type="button" className="location-input__clear" onClick={onClear} aria-label={`Clear ${(accessibleLabel || label).toLowerCase()}`}>×</button> : null}</div>
     {showCurrentLocation ? <button type="button" className="text-button" onClick={onUseCurrentLocation}>Use current location</button> : null}
     {open && visibleSuggestions.length ? <ul className="place-suggestions" id={listId} role="listbox" aria-label={`${label} suggestions`}>{visibleSuggestions.map((item, index) => <li id={`${listId}-${index}`} key={item.id || item.placeId || item.label} role="option" aria-selected={index === activeIndex} onMouseDown={(event) => event.preventDefault()} onClick={() => select(item)}>{item.label}</li>)}</ul> : null}
     <span className="sr-only" aria-live="polite">{open ? `${visibleSuggestions.length} suggestions available.` : ""}</span>{error ? <strong className="field-error" id={`${id}-error`}>{error}</strong> : null}{notice ? <small className="field-notice" id={`${id}-notice`}>{notice}</small> : null}</div>;

@@ -1,4 +1,7 @@
 @import "../styles/route-planner.css";
+@import "../styles/approved-design.css";
+@import "../styles/plan-approved.css";
+@import "../styles/refuges-approved.css";
 
 :root {
   font-family:
@@ -25,7 +28,8 @@ body {
 a,
 button,
 select,
-input {
+input,
+textarea {
   font: inherit;
 }
 

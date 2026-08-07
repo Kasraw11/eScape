@@ -7,6 +7,7 @@ from app.models.pedestrian_count import (
 )
 from app.models.point_of_interest import PointOfInterest
 from app.models.refuge_recommendation import RouteRefugeRecommendation
+from app.models.refuge_feedback import RefugeFeedback
 from app.models.route_option import RouteOption
 from app.models.route_segment import RouteSegment
 from app.models.route_sensor_score import RouteSensorScore
@@ -22,6 +23,7 @@ __all__ = [
     "JourneyRequest",
     "PointOfInterest",
     "RealtimePedestrianCount",
+    "RefugeFeedback",
     "RouteOption",
     "RouteRefugeRecommendation",
     "RouteSegment",
