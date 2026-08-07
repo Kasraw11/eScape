@@ -101,6 +101,55 @@ class CityOfMelbourneClient:
 
         return self._sort_latest_counts(latest_by_location)
 
+    async def fetch_recent_hourly_counts_fallback(
+        self,
+        limit: int = 100,
+        max_records: int = 1000,
+    ) -> list[PedestrianCount]:
+        latest_by_location: dict[int, PedestrianCount] = {}
+        offset = 0
+
+        async with httpx.AsyncClient(
+            base_url=self.base_url,
+            timeout=self.timeout_seconds,
+        ) as client:
+            while offset < max_records:
+                response = await client.get(
+                    "/api/explore/v2.1/catalog/datasets/"
+                    "pedestrian-counting-system-monthly-counts-per-hour/records",
+                    params={
+                        "limit": limit,
+                        "offset": offset,
+                        "order_by": "sensing_date desc,hourday desc",
+                        "select": (
+                            "location_id,sensing_date,hourday,"
+                            "direction_1,direction_2,pedestriancount"
+                        ),
+                    },
+                )
+                response.raise_for_status()
+                payload = response.json()
+                results = payload.get("results")
+
+                if not isinstance(results, list):
+                    return self._sort_latest_counts(latest_by_location)
+
+                for raw_record in results:
+                    count = self._parse_hourly_count(raw_record)
+                    if count is None:
+                        continue
+
+                    existing = latest_by_location.get(count.location_id)
+                    if existing is None or count.sensing_datetime > existing.sensing_datetime:
+                        latest_by_location[count.location_id] = count
+
+                if len(results) < limit:
+                    return self._sort_latest_counts(latest_by_location)
+
+                offset += limit
+
+        return self._sort_latest_counts(latest_by_location)
+
     async def fetch_sensory_refuges(self, limit: int = 100, max_records: int = 1000) -> list[SensoryRefuge]:
         records: list[SensoryRefuge] = []
         offset = 0
@@ -144,6 +193,7 @@ class CityOfMelbourneClient:
 
         data = {
             "sensor_id": raw_record.get("location_id"),
+            "location_id": raw_record.get("location_id"),
             "sensor_name": raw_record.get("sensor_name"),
             "sensor_description": raw_record.get("sensor_description"),
             "installation_date": raw_record.get("installation_date"),
@@ -175,6 +225,33 @@ class CityOfMelbourneClient:
             "sensing_time": raw_record.get("sensing_time"),
             "direction_1": raw_record.get("direction_1"),
             "direction_2": raw_record.get("direction_2"),
+            "total_of_directions": total,
+            "crowd_level": classify_crowd_count(total),
+        }
+
+        try:
+            return PedestrianCount.model_validate(data)
+        except ValidationError:
+            return None
+
+    def _parse_hourly_count(self, raw_record: Any) -> PedestrianCount | None:
+        if not isinstance(raw_record, dict):
+            return None
+
+        total = raw_record.get("pedestriancount")
+        hour = raw_record.get("hourday")
+        sensing_date = raw_record.get("sensing_date")
+
+        if not isinstance(total, int) or not isinstance(hour, int) or not isinstance(sensing_date, str):
+            return None
+
+        data = {
+            "location_id": raw_record.get("location_id"),
+            "sensing_datetime": f"{sensing_date}T{hour:02d}:00:00+10:00",
+            "sensing_date": sensing_date,
+            "sensing_time": f"{hour:02d}:00",
+            "direction_1": raw_record.get("direction_1") or 0,
+            "direction_2": raw_record.get("direction_2") or 0,
             "total_of_directions": total,
             "crowd_level": classify_crowd_count(total),
         }

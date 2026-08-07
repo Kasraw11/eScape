@@ -35,15 +35,29 @@ async def get_latest_counts(
         readings = await client.fetch_latest_pedestrian_counts()
     except httpx.HTTPError:
         readings = []
+
+    data_note = (
+        "Past-hour count records may not include every sensor every minute. "
+        "Missing readings are treated as unknown, not low crowd."
+    )
+
+    if not readings:
+        try:
+            readings = await client.fetch_recent_hourly_counts_fallback()
+            if readings:
+                data_note = (
+                    "Past-hour live counts are unavailable, so this snapshot uses recent historical "
+                    "hourly pedestrian counts. Treat this as context, not live congestion."
+                )
+        except httpx.HTTPError:
+            readings = []
+
     return LatestCountsResponse(
         readings=readings,
         count=len(readings),
         summary=summarise_live_counts(readings),
         source="City of Melbourne Open Data",
-        data_note=(
-            "Past-hour count records may not include every sensor every minute. "
-            "Missing readings are treated as unknown, not low crowd."
-        ),
+        data_note=data_note,
     )
 
 

@@ -4,6 +4,7 @@ from app.core.crowd import CrowdLevel
 from app.main import app
 from app.schemas.crowd import PedestrianCount, SensorLocation
 from app.services.city_of_melbourne import get_city_client
+from app.services.google_routes import get_google_routes_client
 from datetime import date, datetime
 
 
@@ -39,6 +40,11 @@ class FakeCityClient:
         ]
 
 
+class FakeGoogleRoutesClient:
+    async def compute_walking_routes(self, payload):
+        return []
+
+
 def test_health_check() -> None:
     response = client.get("/health")
 
@@ -48,6 +54,7 @@ def test_health_check() -> None:
 
 def test_route_plan_validates_basic_payload() -> None:
     app.dependency_overrides[get_city_client] = lambda: FakeCityClient()
+    app.dependency_overrides[get_google_routes_client] = lambda: FakeGoogleRoutesClient()
     response = client.post(
         "/api/routes/plan",
         json={
@@ -69,6 +76,7 @@ def test_route_plan_validates_basic_payload() -> None:
 
 def test_route_plan_rejects_invalid_threshold() -> None:
     app.dependency_overrides[get_city_client] = lambda: FakeCityClient()
+    app.dependency_overrides[get_google_routes_client] = lambda: FakeGoogleRoutesClient()
     response = client.post(
         "/api/routes/plan",
         json={

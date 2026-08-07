@@ -61,4 +61,15 @@ Open:
 http://127.0.0.1:5173
 ```
 
-The current UI supports route request validation, crowd preference selection, City of Melbourne pedestrian sensor coverage, a live crowd snapshot, three explainable route-option cards and nearby sensory-refuge candidates. Route cards show nearby matched sensor counts, max/average pedestrian readings and the data source. The map is schematic until real walking-route geometry is connected.
+The current UI supports route request validation, crowd preference selection, City of Melbourne pedestrian sensor coverage, a live crowd snapshot, three explainable route-option cards and nearby sensory-refuge candidates. Route cards show nearby matched sensor counts, max/average pedestrian readings and the data source. The map uses OpenStreetMap/Leaflet for interactive display; route geometry is deterministic until a real walking-routing provider is connected.
+
+## Google Routes
+
+The backend can use Google Routes API for real walking-route geometry when `GOOGLE_MAPS_API_KEY` is set.
+
+```bash
+GOOGLE_MAPS_API_KEY=your-google-maps-platform-key
+GOOGLE_ROUTES_BASE_URL=https://routes.googleapis.com
+```
+
+If no key is configured, the backend falls back to deterministic MVP route geometry so the app remains testable. The key is used server-side only and should not be committed.

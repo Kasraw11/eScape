@@ -24,11 +24,13 @@ def plan_routes(
     payload: RoutePlanRequest,
     sensor_locations: list[SensorLocation] | None = None,
     live_counts: list[PedestrianCount] | None = None,
+    route_options: list[RouteOption] | None = None,
+    count_source_label: str = "City of Melbourne live past-hour pedestrian counts",
 ) -> RoutePlanResponse:
     origin = resolve_place(payload.origin.label, payload.origin.coordinates)
     destination = resolve_place(payload.destination.label, payload.destination.coordinates)
 
-    route_options = [
+    route_options = route_options or [
         build_route_option(
             route_id="balanced",
             title="Balanced CBD walk",
@@ -68,7 +70,12 @@ def plan_routes(
     ]
 
     if sensor_locations and live_counts:
-        route_options = apply_live_crowd_scoring(route_options, sensor_locations, live_counts)
+        route_options = apply_live_crowd_scoring(
+            route_options,
+            sensor_locations,
+            live_counts,
+            count_source_label=count_source_label,
+        )
 
     ranked_routes = sorted(
         route_options,
@@ -103,7 +110,7 @@ def plan_routes(
         data_confidence="limited",
         limitations=[
             "Route geometry is deterministic MVP demo data until Google walking routes are connected.",
-            "Live crowd scoring uses nearby sensor readings and does not cover streets without sensors.",
+            "Crowd scoring uses nearby sensor readings and does not cover streets without sensors.",
             "Sensor coverage gaps must not be interpreted as low congestion.",
         ],
         routes=final_routes,
@@ -178,6 +185,7 @@ def apply_live_crowd_scoring(
     routes: list[RouteOption],
     sensor_locations: list[SensorLocation],
     live_counts: list[PedestrianCount],
+    count_source_label: str,
 ) -> list[RouteOption]:
     count_by_location = {count.location_id: count for count in live_counts}
     scored_routes: list[RouteOption] = []
@@ -186,12 +194,12 @@ def apply_live_crowd_scoring(
         nearby_counts = []
 
         for sensor in sensor_locations:
-            count = count_by_location.get(sensor.sensor_id)
+            count = count_by_location.get(sensor.location_id or sensor.sensor_id)
             if count is None:
                 continue
 
             sensor_point = Coordinate(latitude=sensor.latitude, longitude=sensor.longitude)
-            if is_sensor_near_route(sensor_point, route.segments, max_distance_m=260):
+            if is_sensor_near_route(sensor_point, route.segments, max_distance_m=420):
                 nearby_counts.append(count)
 
         if not nearby_counts:
@@ -223,7 +231,7 @@ def apply_live_crowd_scoring(
                     "matched_sensor_count": len(nearby_counts),
                     "average_pedestrian_count": avg_count,
                     "max_pedestrian_count": max_count,
-                    "data_source": "City of Melbourne live past-hour pedestrian counts",
+                    "data_source": count_source_label,
                     "recommendation_reason": reason,
                     "segments": [
                         segment.model_copy(update={"sensory_level": sensory_level})

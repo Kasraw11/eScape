@@ -8,6 +8,7 @@ from app.core.crowd import CrowdLevel
 
 class SensorLocation(BaseModel):
     sensor_id: int = Field(gt=0)
+    location_id: int | None = Field(default=None, gt=0)
     sensor_name: str = Field(min_length=1, max_length=150)
     sensor_description: str | None = Field(default=None, max_length=255)
     latitude: float = Field(ge=-90, le=90)

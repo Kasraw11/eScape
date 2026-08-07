@@ -118,6 +118,43 @@ async def test_fetch_latest_pedestrian_counts_keeps_latest_valid_record_per_loca
 
 
 @pytest.mark.anyio
+async def test_fetch_recent_hourly_counts_fallback_parses_monthly_records() -> None:
+    client = CityOfMelbourneClient(
+        base_url="https://data.melbourne.vic.gov.au",
+        timeout_seconds=5,
+    )
+
+    with respx.mock:
+        respx.get(
+            "https://data.melbourne.vic.gov.au/api/explore/v2.1/catalog/"
+            "datasets/pedestrian-counting-system-monthly-counts-per-hour/records"
+        ).mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "results": [
+                        {
+                            "location_id": 79,
+                            "sensing_date": "2025-08-16",
+                            "hourday": 20,
+                            "direction_1": 324,
+                            "direction_2": 433,
+                            "pedestriancount": 757,
+                        }
+                    ]
+                },
+            )
+        )
+
+        readings = await client.fetch_recent_hourly_counts_fallback()
+
+    assert len(readings) == 1
+    assert readings[0].location_id == 79
+    assert readings[0].total_of_directions == 757
+    assert readings[0].crowd_level == "high"
+
+
+@pytest.mark.anyio
 async def test_fetch_sensory_refuges_validates_coordinates() -> None:
     client = CityOfMelbourneClient(
         base_url="https://data.melbourne.vic.gov.au",

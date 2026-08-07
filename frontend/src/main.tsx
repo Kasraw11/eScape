@@ -4,13 +4,15 @@ import {
   AlertTriangle,
   CheckCircle2,
   Loader2,
-  MapPin,
   Navigation,
   RefreshCw,
   Route,
   ShieldCheck,
 } from "lucide-react";
 import axios from "axios";
+import L from "leaflet";
+import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 import "./styles.css";
 
 type CrowdThreshold = "low" | "medium" | "high";
@@ -60,6 +62,12 @@ type Coordinate = {
   longitude: number;
 };
 
+type RouteSegment = {
+  start: Coordinate;
+  end: Coordinate;
+  sensory_level: CrowdThreshold;
+};
+
 type SensoryRefuge = {
   name: string;
   theme: string | null;
@@ -93,6 +101,7 @@ type RouteOption = {
   data_source: string;
   recommendation_reason: string;
   is_recommended: boolean;
+  segments: RouteSegment[];
 };
 
 const api = axios.create({
@@ -104,13 +113,6 @@ const thresholdCopy: Record<CrowdThreshold, string> = {
   low: "Prefer the calmest available option and warn early.",
   medium: "Balance calmer streets with a practical walking route.",
   high: "Allow busier areas if they make the trip more direct.",
-};
-
-const melbourneBounds = {
-  minLat: -37.826,
-  maxLat: -37.796,
-  minLng: 144.94,
-  maxLng: 144.982,
 };
 
 function App() {
@@ -125,10 +127,13 @@ function App() {
   const [routeStatus, setRouteStatus] = React.useState<"idle" | "loading" | "ready" | "error">("idle");
   const [refugeStatus, setRefugeStatus] = React.useState<"idle" | "loading" | "ready" | "error">("idle");
   const [routeResult, setRouteResult] = React.useState<RoutePlanResponse | null>(null);
+  const [selectedRouteId, setSelectedRouteId] = React.useState<string | null>(null);
   const [errorMessage, setErrorMessage] = React.useState("");
 
   const activeSensors = sensors.filter((sensor) => sensor.status === "A");
   const recommendedRoute = routeResult?.routes.find((route) => route.is_recommended);
+  const selectedRoute =
+    routeResult?.routes.find((route) => route.route_id === selectedRouteId) ?? recommendedRoute ?? null;
   const coverageLabel =
     activeSensors.length > 70 ? "strong" : activeSensors.length > 25 ? "partial" : "limited";
 
@@ -175,6 +180,7 @@ function App() {
         crowd_threshold: threshold,
       });
       setRouteResult(response.data);
+      setSelectedRouteId(response.data.routes.find((route) => route.is_recommended)?.route_id ?? null);
       setRouteStatus("ready");
       if (response.data.destination) {
         void loadNearbyRefuges(response.data.destination);
@@ -258,7 +264,7 @@ function App() {
 
           <div className="status-strip">
             <ShieldCheck size={18} aria-hidden="true" />
-            <span>Backend validation is active. Live routing and scoring are the next connection points.</span>
+            <span>Live crowd scoring is active. Google walking routes are used when a server-side API key is configured.</span>
           </div>
         </aside>
 
@@ -273,25 +279,7 @@ function App() {
             </button>
           </div>
 
-          <div className="sensor-map">
-            {activeSensors.slice(0, 120).map((sensor) => (
-              <span
-                className="sensor-dot"
-                key={sensor.sensor_id}
-                style={sensorPosition(sensor)}
-                title={`${sensor.sensor_description ?? sensor.sensor_name} (${sensor.sensor_name})`}
-              />
-            ))}
-            <div className="route-preview-line" />
-            <div className="map-label origin">
-              <MapPin size={14} />
-              Start
-            </div>
-            <div className="map-label destination">
-              <MapPin size={14} />
-              Destination
-            </div>
-          </div>
+          <InteractiveMap sensors={activeSensors} route={selectedRoute} refuges={refuges?.refuges ?? []} />
 
           <div className="insight-grid">
             <StatusMetric label="Sensor records" value={sensorStatus === "ready" ? String(sensors.length) : "--"} />
@@ -379,7 +367,12 @@ function App() {
           {routeResult?.routes.length ? (
             <div className="route-list">
               {routeResult.routes.map((route) => (
-                <article className={`route-card ${route.is_recommended ? "recommended" : ""}`} key={route.route_id}>
+                <article
+                  className={`route-card ${route.is_recommended ? "recommended" : ""} ${
+                    selectedRoute?.route_id === route.route_id ? "selected" : ""
+                  }`}
+                  key={route.route_id}
+                >
                   <div className="route-card-header">
                     <div>
                       <h3>{route.title}</h3>
@@ -399,7 +392,12 @@ function App() {
                   </div>
                   <p className="route-reason">{route.recommendation_reason}</p>
                   <p className="route-source">{route.data_source}</p>
-                  {route.is_recommended ? <strong className="recommended-label">Recommended</strong> : null}
+                  <div className="route-card-actions">
+                    {route.is_recommended ? <strong className="recommended-label">Recommended</strong> : <span />}
+                    <button className="select-route-button" type="button" onClick={() => setSelectedRouteId(route.route_id)}>
+                      Show on map
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
@@ -455,7 +453,7 @@ function App() {
               <li>Sensor locations load from City of Melbourne Open Data.</li>
               <li>Journey inputs return deterministic MVP route options.</li>
               <li>Nearby refuge candidates load from City landmarks/POIs.</li>
-              <li>Map markers are schematic until real map routing is connected.</li>
+              <li>The map is interactive, but route geometry is deterministic until a routing API is connected.</li>
               <li>Route sensory levels are explainable assumptions until live per-segment scoring is connected.</li>
             </ul>
           </div>
@@ -465,26 +463,115 @@ function App() {
   );
 }
 
-function sensorPosition(sensor: SensorLocation): React.CSSProperties {
-  const x = ((sensor.longitude - melbourneBounds.minLng) / (melbourneBounds.maxLng - melbourneBounds.minLng)) * 100;
-  const y = ((melbourneBounds.maxLat - sensor.latitude) / (melbourneBounds.maxLat - melbourneBounds.minLat)) * 100;
-
-  return {
-    left: `${clamp(x, 3, 97)}%`,
-    top: `${clamp(y, 3, 97)}%`,
-  };
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
-
 function formatDistance(distanceM: number) {
   if (distanceM >= 1000) {
     return `${(distanceM / 1000).toFixed(1)} km`;
   }
   return `${distanceM} m`;
 }
+
+function InteractiveMap({
+  sensors,
+  route,
+  refuges,
+}: {
+  sensors: SensorLocation[];
+  route: RouteOption | null;
+  refuges: SensoryRefuge[];
+}) {
+  const routePositions = routeToPositions(route);
+  const routeColor = route ? crowdColor(route.sensory_level) : "#8a5a2b";
+
+  return (
+    <div className="real-map">
+      <MapContainer center={[-37.8136, 144.9631]} zoom={14} scrollWheelZoom className="leaflet-map">
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <FitMapToRoute routePositions={routePositions} />
+        {sensors.slice(0, 140).map((sensor) => (
+          <CircleMarker
+            center={[sensor.latitude, sensor.longitude]}
+            key={sensor.sensor_id}
+            pathOptions={{ color: "#176f67", fillColor: "#176f67", fillOpacity: 0.72, weight: 1 }}
+            radius={4}
+          >
+            <Popup>
+              <strong>{sensor.sensor_description ?? sensor.sensor_name}</strong>
+              <br />
+              {sensor.sensor_name}
+            </Popup>
+          </CircleMarker>
+        ))}
+        {routePositions.length ? (
+          <Polyline positions={routePositions} pathOptions={{ color: routeColor, weight: 6, opacity: 0.82 }} />
+        ) : null}
+        {refuges.map((refuge) => (
+          <Marker
+            icon={refugeIcon}
+            key={`${refuge.name}-${refuge.latitude}-${refuge.longitude}`}
+            position={[refuge.latitude, refuge.longitude]}
+          >
+            <Popup>
+              <strong>{refuge.name}</strong>
+              <br />
+              {refuge.sub_theme ?? refuge.theme ?? "Refuge candidate"}
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+    </div>
+  );
+}
+
+function FitMapToRoute({ routePositions }: { routePositions: [number, number][] }) {
+  const map = useMap();
+
+  React.useEffect(() => {
+    if (!routePositions.length) {
+      return;
+    }
+
+    map.fitBounds(routePositions, { padding: [36, 36], maxZoom: 16 });
+  }, [map, routePositions]);
+
+  return null;
+}
+
+function routeToPositions(route: RouteOption | null): [number, number][] {
+  if (!route) {
+    return [];
+  }
+
+  const positions: [number, number][] = [];
+  for (const segment of route.segments) {
+    const start: [number, number] = [segment.start.latitude, segment.start.longitude];
+    const end: [number, number] = [segment.end.latitude, segment.end.longitude];
+
+    if (!positions.length) {
+      positions.push(start);
+    }
+    positions.push(end);
+  }
+
+  return positions;
+}
+
+function crowdColor(level: CrowdThreshold) {
+  return {
+    low: "#24745f",
+    medium: "#b7791f",
+    high: "#b23b3b",
+  }[level];
+}
+
+const refugeIcon = L.divIcon({
+  className: "refuge-map-icon",
+  html: "<span></span>",
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+});
 
 function StatusMetric({ label, value }: { label: string; value: string }) {
   return (
