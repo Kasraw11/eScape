@@ -48,7 +48,9 @@ class RefugeFeedbackService:
         crowding = [row[1] for row in rows]
         comfort = [row[2] for row in rows]
         distribution = {level: crowding.count(level) for level in ("low", "moderate", "high")}
-        percentage = lambda matching: round(matching * 100 / count)
+        def percentage(matching: int) -> int:
+            return round(matching * 100 / count)
+
         return RefugeFeedbackSummary(
             refuge_id=refuge_id,
             response_count=count,

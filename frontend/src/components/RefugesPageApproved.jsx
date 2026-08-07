@@ -202,6 +202,7 @@ export default function RefugesPage() {
       return;
     }
     setSelectedId(refuge.refuge_id);
+    setDetails(null);
     setDirectionsMessage("Finding walking directions…");
     try {
       const response = await planRoute({ origin_latitude: location.latitude, origin_longitude: location.longitude, destination_latitude: refuge.latitude, destination_longitude: refuge.longitude, travel_mode: "walking", preferred_crowd_threshold: 3 });
@@ -253,7 +254,7 @@ export default function RefugesPage() {
             })}
           </fieldset>
           <div className="refuge-compact-filters">
-            <label>Sort by<select aria-label="Sort by" value="nearest" readOnly><option value="nearest">Nearest</option></select></label>
+            <label>Sort by<select aria-label="Sort by" defaultValue="nearest"><option value="nearest">Nearest</option></select></label>
             <label>Max distance<select aria-label="Search radius" value={radius} onChange={(event) => setRadius(Number(event.target.value))}><option value="500">500 m</option><option value="1000">1 km</option><option value="2000">2 km</option><option value="5000">5 km</option></select></label>
           </div>
           <label className="checkbox-control open-now-filter"><input type="checkbox" checked={openOnly} onChange={(event) => setOpenOnly(event.target.checked)} /> Open now</label>
@@ -273,7 +274,7 @@ export default function RefugesPage() {
               <button type="button" className="refuge-card__select" onClick={() => selectRefuge(item)} aria-label={`View details for ${item.name}`}>
                 <span className="refuge-card__heading"><span><strong>{item.name}</strong><small>{item.category}</small></span><strong>{distanceLabel(item.distance_m)}</strong></span>
                 <span className="refuge-card__description">{item.sensory_suitability_description}</span>
-                <span className="refuge-card__meta"><span>{item.opening_hours_summary || openingLabel(item.opening_status)}</span><span>{item.estimated_travel_minutes} min walk</span></span>
+                <span className="refuge-card__meta"><span><strong>{openingLabel(item.opening_status)}</strong>{item.opening_status === "open" && item.opening_hours_summary ? <small>{item.opening_hours_summary}</small> : null}</span><span>{item.estimated_travel_minutes} min walk</span></span>
               </button>
               <h3 className="sr-only">{item.name}</h3>
               <div className="card-actions"><button type="button" onClick={() => selectRefuge(item)}>View details</button><button type="button" onClick={() => requestDirections(item)}>Directions</button></div>

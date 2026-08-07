@@ -21,9 +21,7 @@ export default [
       },
       globals: {
         document: "readonly",
-        expect: "readonly",
         fetch: "readonly",
-        jest: "readonly",
         module: "readonly",
         process: "readonly",
         console: "readonly",
@@ -33,16 +31,6 @@ export default [
     rules: {
       ...nextPlugin.configs["core-web-vitals"].rules,
       "no-unused-vars": "off",
-    },
-  },
-  {
-    files: ["**/*.test.{js,jsx}", "src/test/**/*.js"],
-    languageOptions: {
-      globals: {
-        beforeEach: "readonly",
-        describe: "readonly",
-        it: "readonly",
-      },
     },
   },
 ];

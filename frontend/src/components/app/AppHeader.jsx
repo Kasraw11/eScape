@@ -3,16 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import AppIcon from "./AppIcon.jsx";
+import NotificationBell from "./NotificationBell.jsx";
 
 export const PRIMARY_LINKS = [
   { href: "/", desktop: "Home", mobile: "Home", icon: "home" },
   { href: "/plan", desktop: "Plan", mobile: "Plan", icon: "route" },
   { href: "/refuges", desktop: "Find Refuges", mobile: "Refuges", icon: "leaf" },
-  { href: "/alerts", desktop: "Alerts", mobile: "Alerts", icon: "bell" },
   { href: "/settings", desktop: "Settings", mobile: "Settings", icon: "settings" },
 ];
 
-export default function AppHeader({ onEmergency, emergencyButtonRef }) {
+export default function AppHeader() {
   const pathname = usePathname();
   return (
     <header className="site-header">
@@ -26,7 +26,7 @@ export default function AppHeader({ onEmergency, emergencyButtonRef }) {
           return <Link key={link.href} href={link.href} className={active ? "desktop-nav__active" : ""} aria-current={active ? "page" : undefined}><AppIcon name={link.icon} />{link.desktop}</Link>;
         })}
       </nav>
-      <button className="emergency-button" type="button" onClick={onEmergency} ref={emergencyButtonRef}><span aria-hidden="true">+</span><span>Emergency</span></button>
+      <NotificationBell />
     </header>
   );
 }

@@ -1,0 +1,172 @@
+:root {
+  --surface-hover: rgba(248, 250, 255, 0.94);
+  --input-background: rgba(255, 255, 255, 0.94);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --page-background: #0d1321;
+  --page-background-secondary: #111a2c;
+  --surface: rgba(23, 32, 52, 0.82);
+  --surface-strong: #172034;
+  --surface-hover: rgba(31, 43, 69, 0.92);
+  --input-background: rgba(18, 27, 45, 0.92);
+  --surface-border: rgba(180, 195, 220, 0.13);
+  --primary: #7188ff;
+  --primary-hover: #91a2ff;
+  --primary-soft: rgba(90, 115, 235, 0.16);
+  --text-primary: #f3f6fc;
+  --text-secondary: #aab6cb;
+  --text-muted: #8795ad;
+  --low: #65cbb2;
+  --low-background: rgba(52, 153, 130, 0.16);
+  --moderate: #f0bd60;
+  --moderate-background: rgba(196, 132, 28, 0.16);
+  --high: #f08a82;
+  --high-background: rgba(199, 74, 67, 0.17);
+  --unavailable: #aab6cb;
+  --unavailable-background: rgba(135, 149, 173, 0.14);
+  --danger: #f08a82;
+  --danger-background: rgba(199, 74, 67, 0.15);
+  --focus-ring: 0 0 0 3px rgba(113, 136, 255, 0.3);
+  --shadow-soft: 0 10px 35px rgba(0, 0, 0, 0.22);
+}
+
+body,
+.site-header,
+.mobile-bottom-nav,
+.glass-panel,
+.dialog-surface,
+input,
+select,
+textarea,
+button { transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease; }
+
+[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at 58% 4%, rgba(82, 105, 190, 0.12), transparent 34rem),
+    linear-gradient(180deg, #10182a 0%, var(--page-background) 58%, #0d1422 100%);
+}
+
+[data-theme="dark"] .site-header,
+[data-theme="dark"] .mobile-bottom-nav,
+[data-theme="dark"] .dialog-surface,
+[data-theme="dark"] .support-panel,
+[data-theme="dark"] .support-button,
+[data-theme="dark"] .settings-sidebar,
+[data-theme="dark"] .start-trip-bar {
+  border-color: var(--surface-border);
+  background: rgba(18, 27, 45, 0.9);
+  box-shadow: var(--shadow-soft);
+}
+
+[data-theme="dark"] .glass-panel,
+[data-theme="dark"] .settings-card,
+[data-theme="dark"] .feature-card,
+[data-theme="dark"] .refuge-card,
+[data-theme="dark"] .predictive-alert-card,
+[data-theme="dark"] .route-card--recommended,
+[data-theme="dark"] .dialog-surface,
+[data-theme="dark"] .refuge-feedback-dialog {
+  border-color: var(--surface-border);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
+[data-theme="dark"] select,
+[data-theme="dark"] textarea,
+[data-theme="dark"] .location-input__control input,
+[data-theme="dark"] .place-suggestions,
+[data-theme="dark"] .refuge-manual-location input,
+[data-theme="dark"] .refuge-search input,
+[data-theme="dark"] .refuge-compact-filters select,
+[data-theme="dark"] .refuge-more-filters input {
+  border-color: var(--surface-border);
+  color: var(--text-primary);
+  background: var(--input-background);
+}
+
+[data-theme="dark"] .plan-tabs,
+[data-theme="dark"] .plan-page > .plan-tabs,
+[data-theme="dark"] .journey-panel .travel-mode__option,
+[data-theme="dark"] .crowd-tolerance__options,
+[data-theme="dark"] .map-preview__actions .icon-button,
+[data-theme="dark"] .map-detail-tabs,
+[data-theme="dark"] .route-card,
+[data-theme="dark"] .alternative-card,
+[data-theme="dark"] .empty-state,
+[data-theme="dark"] .refuge-filter-pills span,
+[data-theme="dark"] .refuge-card .card-actions button,
+[data-theme="dark"] .refuge-feedback-choices button,
+[data-theme="dark"] .feedback-rating button,
+[data-theme="dark"] .dialog-close,
+[data-theme="dark"] .emergency-actions a,
+[data-theme="dark"] .emergency-actions button,
+[data-theme="dark"] .support-options button,
+[data-theme="dark"] .support-options a,
+[data-theme="dark"] .emergency-note button,
+[data-theme="dark"] .trip-actions a,
+[data-theme="dark"] .trip-actions button,
+[data-theme="dark"] .theme-control button {
+  border-color: var(--surface-border);
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+[data-theme="dark"] .loading-state,
+[data-theme="dark"] .error-state,
+[data-theme="dark"] .recommendation-summary,
+[data-theme="dark"] .congestion-alert {
+  border-color: var(--surface-border);
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+[data-theme="dark"] .home-hero { background: rgba(17, 26, 44, 0.62); }
+[data-theme="dark"] .feature-card__icon { background: rgba(90, 115, 235, 0.14); }
+[data-theme="dark"] .plan-page > .plan-tabs button[aria-selected="true"],
+[data-theme="dark"] .map-detail-tabs button[aria-selected="true"],
+[data-theme="dark"] .crowd-tolerance__options button[aria-pressed="true"],
+[data-theme="dark"] .theme-control button[aria-pressed="true"] { color: var(--primary-hover); background: var(--primary-soft); }
+[data-theme="dark"] .journey-panel .travel-mode__option--selected { color: var(--low); background: var(--low-background); }
+[data-theme="dark"] .plan-page .recommended-badge { color: var(--low); background: var(--surface-strong); }
+[data-theme="dark"] .sensory-indicator--low { color: var(--low); background: var(--low-background); }
+[data-theme="dark"] .sensory-indicator--moderate { color: var(--moderate); background: var(--moderate-background); }
+[data-theme="dark"] .sensory-indicator--high { color: var(--high); background: var(--high-background); }
+[data-theme="dark"] .sensory-dots i { background: #46536b; }
+[data-theme="dark"] .map-preview__interactive,
+[data-theme="dark"] .map-notice { background: linear-gradient(145deg, #172238, #132d31); }
+[data-theme="dark"] .trip-metrics div,
+[data-theme="dark"] .detail-panel dl > div,
+[data-theme="dark"] .refuge-detail .refuge-detail__facts > div,
+[data-theme="dark"] .alternative-summary { border-color: var(--surface-border); background: var(--surface-hover); }
+[data-theme="dark"] .current-location-button,
+[data-theme="dark"] .refuge-controls .location-status { border-color: var(--surface-border) !important; color: var(--text-primary) !important; background: var(--surface-hover) !important; }
+[data-theme="dark"] .refuge-feedback-metrics > div { border-color: rgba(101, 203, 178, 0.18); background: var(--low-background) !important; }
+[data-theme="dark"] .refuge-feedback-toast { color: var(--low); background: rgba(20, 55, 52, 0.96); }
+[data-theme="dark"] .opening-badge { color: var(--text-secondary); background: var(--surface-hover); }
+[data-theme="dark"] .opening-badge--open { color: var(--low); background: var(--low-background); }
+[data-theme="dark"] .opening-badge--closed { color: var(--high); background: var(--high-background); }
+[data-theme="dark"] .settings-toggle > span { background: #4b5870; }
+[data-theme="dark"] .settings-toggle > span::after { background: #eef2fa; }
+[data-theme="dark"] .sensitivity-row--green { --sensitivity-soft: rgba(52, 153, 130, 0.16); --sensitivity-accent: #65cbb2; }
+[data-theme="dark"] .sensitivity-row--purple { --sensitivity-soft: rgba(111, 92, 212, 0.18); --sensitivity-accent: #a89bff; }
+[data-theme="dark"] .sensitivity-row--amber { --sensitivity-soft: rgba(190, 126, 25, 0.17); --sensitivity-accent: #f0bd60; }
+[data-theme="dark"] .sensitivity-row--blue { --sensitivity-soft: var(--primary-soft); --sensitivity-accent: var(--primary); }
+[data-theme="dark"] .configuration-note { color: #f0c77a; background: rgba(128, 88, 20, 0.18); }
+[data-theme="dark"] .emergency-note { color: #f5aaa4; }
+[data-theme="dark"] .secondary-button,
+[data-theme="dark"] .current-trip-card .trip-actions .danger-button { border-color: var(--surface-border); background: var(--surface-hover); }
+
+@media (prefers-reduced-motion: reduce) {
+  body,
+  .site-header,
+  .mobile-bottom-nav,
+  .glass-panel,
+  .dialog-surface,
+  input,
+  select,
+  textarea,
+  button { transition: none; }
+}

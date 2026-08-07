@@ -7,8 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
-    "test": "jest"
+    "lint": "eslint ."
   },
   "dependencies": {
     "next": "latest",
@@ -16,14 +15,8 @@
     "react-dom": "latest"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "latest",
-    "@testing-library/react": "latest",
-    "@testing-library/user-event": "latest",
     "eslint": "^9.39.5",
     "eslint-config-next": "latest",
-    "jest": "latest",
-    "jest-environment-jsdom": "latest",
-    "jsdom": "latest",
     "@eslint/js": "^9.39.5"
   }
 }

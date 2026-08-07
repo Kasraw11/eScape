@@ -1464,21 +1464,6 @@ summary:focus-visible {
 .site-header { min-height: 62px; border-radius: 16px; box-shadow: 0 5px 18px rgba(30, 64, 107, 0.06); }
 .brand__mark { background: var(--primary); box-shadow: none; }
 .desktop-nav { margin-inline: auto; }
-.emergency-button {
-  display: inline-flex;
-  min-height: 44px;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid rgba(185, 28, 28, 0.3);
-  border-radius: 11px;
-  color: #991b1b;
-  background: #fff7f7;
-  padding: 8px 12px;
-  cursor: pointer;
-  font-weight: 800;
-}
-.emergency-button span:first-child { font-size: 1.25rem; line-height: 1; }
-
 .glass-panel { border-radius: 16px; backdrop-filter: none; }
 .page-heading { padding-block: 4px 0; }
 .page-heading h1 { font-size: clamp(1.8rem, 3.2vw, 2.35rem); }
@@ -1638,8 +1623,6 @@ textarea:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px;
   .desktop-nav { display: none; }
   .brand { margin-right: auto; }
   .brand__mark { width: 36px; height: 36px; border-radius: 10px; }
-  .emergency-button { min-width: 44px; justify-content: center; padding-inline: 10px; }
-  .emergency-button span:last-child { display: none; }
   .page-heading p:last-child { line-height: 1.45; }
   .plan-workspace { grid-template-columns: 1fr; }
   .plan-workspace .map-preview { grid-column: auto; }

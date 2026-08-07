@@ -5,4 +5,3 @@ psycopg[binary]
 pydantic-settings
 alembic
 httpx
-pytest

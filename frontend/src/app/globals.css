@@ -2,6 +2,9 @@
 @import "../styles/approved-design.css";
 @import "../styles/plan-approved.css";
 @import "../styles/refuges-approved.css";
+@import "../styles/settings-approved.css";
+@import "../styles/live-alerts.css";
+@import "../styles/theme.css";
 
 :root {
   font-family:

@@ -1,43 +1,190 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useJourney } from "../context/JourneyContext.jsx";
 
-const accessibilityDefaults = { reducedMotion: false, contrast: false, largerText: false, simplifiedMap: false, soundAlerts: false };
-const SECTIONS = ["Sensory preferences", "Journey preferences", "Accessibility", "Notifications", "Privacy", "About"];
+import { useSettings } from "../context/SettingsContext.jsx";
+import AppIcon from "./app/AppIcon.jsx";
+import SensitivitySelector from "./SensitivitySelector.jsx";
+
+const NAV_ITEMS = [
+  { id: "preferences", label: "Preferences", description: "Sensory preferences", icon: "sliders" },
+  { id: "notifications", label: "Notifications", description: "Alerts & updates", icon: "bell" },
+  { id: "account", label: "Account", description: "Profile & security", icon: "user" },
+  { id: "about", label: "About", description: "About eScape", icon: "info" },
+  { id: "support", label: "Support", description: "Help & feedback", icon: "help" },
+];
+
+const SENSORY_SETTINGS = [
+  {
+    id: "crowding",
+    icon: "crowd",
+    label: "Crowding sensitivity",
+    description: "How much crowding affects you.",
+    guidance: "We'll avoid busy areas when possible.",
+    accent: "green",
+  },
+  {
+    id: "noise",
+    icon: "volume",
+    label: "Noise sensitivity",
+    description: "How much noise affects you.",
+    guidance: "We'll prefer quieter routes and spaces.",
+    accent: "purple",
+  },
+  {
+    id: "brightness",
+    icon: "brightness",
+    label: "Brightness sensitivity",
+    description: "How much bright light affects you.",
+    guidance: "We'll prefer shaded or low-glare routes.",
+    accent: "amber",
+  },
+  {
+    id: "odour",
+    icon: "scent",
+    label: "Smells / strong odours",
+    description: "How much smells affect you.",
+    guidance: "We'll avoid areas with strong odours.",
+    accent: "blue",
+  },
+];
+
+function SettingsToggle({ label, description, checked, onChange }) {
+  return (
+    <label className="settings-toggle-row">
+      <span><strong>{label}</strong><small>{description}</small></span>
+      <span className="settings-toggle">
+        <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+        <span aria-hidden="true" />
+      </span>
+    </label>
+  );
+}
+
+function CardHeading({ title, description }) {
+  return <header className="settings-card-heading"><h2>{title}</h2><p>{description}</p></header>;
+}
 
 export default function SettingsPage() {
-  const { endJourney } = useJourney();
-  const [accessibility, setAccessibility] = useState(accessibilityDefaults);
+  const {
+    sensoryPreferences,
+    notificationPreferences,
+    theme,
+    setSensoryPreference,
+    resetSensoryPreferences,
+    setNotificationPreference,
+    setTheme,
+  } = useSettings();
   const [saved, setSaved] = useState("");
   const savedTimer = useRef(null);
-  const markSaved = () => { setSaved("Changes saved"); window.clearTimeout(savedTimer.current); savedTimer.current = window.setTimeout(() => setSaved(""), 1800); };
 
   useEffect(() => () => window.clearTimeout(savedTimer.current), []);
 
-  useEffect(() => {
-    document.documentElement.classList.toggle("increased-contrast", accessibility.contrast);
-    document.documentElement.classList.toggle("larger-text", accessibility.largerText);
-    document.documentElement.classList.toggle("reduce-motion", accessibility.reducedMotion);
-    return () => document.documentElement.classList.remove("increased-contrast", "larger-text", "reduce-motion");
-  }, [accessibility]);
+  function markSaved(message = "Changes saved") {
+    setSaved(message);
+    window.clearTimeout(savedTimer.current);
+    savedTimer.current = window.setTimeout(() => setSaved(""), 1800);
+  }
 
-  function toggle(key) {
-    setAccessibility((current) => ({ ...current, [key]: !current[key] }));
+  function updateSensory(key, level) {
+    setSensoryPreference(key, level);
     markSaved();
   }
 
-  return <div className="settings-page page-stack"><header className="page-heading"><p className="section-kicker">Your experience</p><h1>Settings</h1><p>Adjust how eScape presents routes and alerts. Changes are not permanently saved.</p><span className="settings-saved" role="status" aria-live="polite">{saved}</span></header>
-    <div className="settings-layout">
-      <nav className="settings-sidebar" aria-label="Settings sections">{SECTIONS.map((section) => <a key={section} href={`#settings-${section.toLowerCase().replaceAll(" ", "-")}`}>{section}</a>)}</nav>
-      <div className="settings-content">
-        <section className="settings-card" id="settings-sensory-preferences"><h2>Sensory preferences</h2><label>Crowd tolerance<select defaultValue="3" onChange={markSaved}><option value="1">Very low</option><option value="2">Low</option><option value="3">Moderate</option><option value="4">Higher</option><option value="5">Highest</option></select></label><label>Notification sensitivity<select defaultValue="important" onChange={markSaved}><option value="all">All changes</option><option value="important">Important changes</option><option value="high">High crowding only</option></select></label><label>Data freshness preference<select defaultValue="recent" onChange={markSaved}><option value="live">Live only</option><option value="recent">Live or recent</option><option value="any">Include historical estimates</option></select></label></section>
-        <details className="settings-card settings-disclosure" id="settings-journey-preferences"><summary><h2>Journey preferences</h2><span>Optional</span></summary><label>Preferred travel mode<select defaultValue="walking" onChange={markSaved}><option value="walking">Walking</option><option value="transit">Public transport</option></select></label><label>Maximum additional travel time<select defaultValue="10" onChange={markSaved}><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="20">20 minutes</option></select></label></details>
-        <section className="settings-card" id="settings-accessibility"><h2>Accessibility</h2>{Object.entries({ reducedMotion: "Reduced motion", contrast: "Increased contrast", largerText: "Larger text", simplifiedMap: "Simplified map", soundAlerts: "Sound alerts" }).map(([key, label]) => <label className="checkbox-control" key={key}><input type="checkbox" checked={accessibility[key]} onChange={() => toggle(key)} />{label}</label>)}</section>
-        <section className="settings-card" id="settings-notifications"><h2>Notifications</h2><label className="checkbox-control"><input type="checkbox" defaultChecked onChange={markSaved} />Enable predictive alerts</label><label>Minimum alert severity<select defaultValue="high" onChange={markSaved}><option>Low</option><option>Moderate</option><option>High</option></select></label><label className="checkbox-control"><input type="checkbox" defaultChecked onChange={markSaved} />Route change warnings</label></section>
-        <section className="settings-card" id="settings-privacy"><h2>Privacy</h2><p>Trip and preference information stays in temporary browser state.</p><button type="button" onClick={() => { endJourney(); markSaved(); }}>Clear trip history</button><button type="button" onClick={() => { setAccessibility(accessibilityDefaults); markSaved(); }}>Clear saved preferences</button></section>
-        <section className="settings-card" id="settings-about"><h2>About</h2><p>eScape compares sensory-aware routes using FastAPI, Google Maps and validated Melbourne data when available.</p><p>Version 0.1</p></section>
-      </div>
+  function updateNotification(key, enabled) {
+    setNotificationPreference(key, enabled);
+    markSaved();
+  }
+
+  function chooseTheme(nextTheme) {
+    setTheme(nextTheme);
+    markSaved(nextTheme === "dark" ? "Dark theme applied" : "Light theme applied");
+  }
+
+  function openSupport() {
+    window.dispatchEvent(new globalThis.Event("escape:open-support"));
+  }
+
+  return (
+    <div className="settings-approved-page">
+      <aside className="settings-navigation glass-panel">
+        <h1>Settings</h1>
+        <nav aria-label="Settings sections">
+          {NAV_ITEMS.map((item, index) => (
+            <a key={item.id} href={"#settings-" + item.id} className={index === 0 ? "settings-navigation__active" : ""} aria-current={index === 0 ? "location" : undefined}>
+              <AppIcon name={item.icon} size={24} />
+              <span><strong>{item.label}</strong><small>{item.description}</small></span>
+            </a>
+          ))}
+        </nav>
+        <div className="settings-navigation__note">
+          <span><AppIcon name="leaf" size={25} /></span>
+          <p>Your preferences help us personalise calmer, more comfortable journeys.</p>
+        </div>
+      </aside>
+
+      <main className="settings-primary" id="settings-preferences">
+        <header className="settings-page-heading">
+          <h2>Preferences</h2>
+          <p>Customise your experience to match your sensory needs.</p>
+          <span className="settings-saved" role="status" aria-live="polite">{saved}</span>
+        </header>
+
+        <section className="settings-sensory-card glass-panel" aria-labelledby="sensory-preferences-heading">
+          <header className="settings-sensory-card__heading">
+            <div><h2 id="sensory-preferences-heading">Sensory preferences</h2><p>Adjust what affects your comfort the most.</p></div>
+            <button type="button" className="settings-reset" onClick={() => { resetSensoryPreferences(); markSaved("Sensory preferences reset"); }}>
+              <AppIcon name="reset" size={18} /> Reset to default
+            </button>
+          </header>
+          <div className="settings-sensory-list">
+            {SENSORY_SETTINGS.map((setting) => (
+              <SensitivitySelector
+                key={setting.id}
+                {...setting}
+                value={sensoryPreferences[setting.id]}
+                onChange={(level) => updateSensory(setting.id, level)}
+              />
+            ))}
+          </div>
+        </section>
+      </main>
+
+      <aside className="settings-secondary">
+        <section className="settings-side-card glass-panel" id="settings-notifications">
+          <CardHeading title="Notifications" description="Choose what updates you receive." />
+          <div className="settings-toggle-list">
+            <SettingsToggle label="Route alerts" description="Disruptions and changes" checked={notificationPreferences.routeAlerts} onChange={(enabled) => updateNotification("routeAlerts", enabled)} />
+            <SettingsToggle label="Sensory alerts" description="High sensory conditions ahead" checked={notificationPreferences.sensoryAlerts} onChange={(enabled) => updateNotification("sensoryAlerts", enabled)} />
+          </div>
+          <p className="settings-availability-note">Only notification types currently supported by eScape are shown.</p>
+        </section>
+
+        <section className="settings-side-card glass-panel" aria-labelledby="appearance-heading">
+          <CardHeading title="Appearance" description="Choose how eScape looks." />
+          <fieldset className="theme-control" aria-labelledby="appearance-heading">
+            <legend id="appearance-heading">Theme</legend>
+            <button type="button" aria-pressed={theme === "light"} onClick={() => chooseTheme("light")}><AppIcon name="sun" size={18} /> Light</button>
+            <button type="button" aria-pressed={theme === "dark"} onClick={() => chooseTheme("dark")}><AppIcon name="moon" size={18} /> Dark</button>
+          </fieldset>
+        </section>
+
+        <section className="settings-side-card glass-panel" id="settings-account">
+          <CardHeading title="Account" description="Profile & security." />
+          <p className="settings-honest-state">Account sign-in is not configured in this version. Preferences are stored in this browser.</p>
+        </section>
+
+        <section className="settings-side-card glass-panel" id="settings-about">
+          <CardHeading title="About" description="About eScape." />
+          <p className="settings-about-brand"><strong>eScape</strong><span>Calmer journeys through Melbourne CBD.</span></p>
+          <p className="settings-version">Version 0.1</p>
+        </section>
+
+        <section className="settings-side-card glass-panel" id="settings-support">
+          <CardHeading title="Support" description="Help & feedback." />
+          <button type="button" className="settings-support-action" onClick={openSupport}>Open support</button>
+        </section>
+      </aside>
     </div>
-  </div>;
+  );
 }

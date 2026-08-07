@@ -123,16 +123,4 @@ cd "E:\FIT 5120\Onboarding\eScape\backend"
 
 A production scheduler can run ingestion and then predictions every 10–15 minutes. Each sensor runs in a database savepoint, so one partial failure does not erase other valid forecasts. Predictions are unique per sensor, 15-minute target window, and model version. High predictions with Medium/High confidence create or update one active alert under `sensor_id + forecast_window + predictive_crowd`; changed alerts are updated and stale/downgraded alerts are closed or superseded.
 
-`GET /api/predictions` returns nearby validated forecasts. `GET /api/alerts/predictive` applies enabled, minimum-severity, maximum-distance, and route-only preferences in the backend. Iteration 3 preferences are controlled temporary page state, not persistent account settings. The `/alerts` page refreshes without overlapping requests and shows an explicit temporary-unavailability state rather than fabricated data.
-
-## Testing
-
-```powershell
-cd "E:\FIT 5120\Onboarding\eScape\backend"
-.\.venv\Scripts\python.exe -m pytest -v
-
-cd "E:\FIT 5120\Onboarding\eScape\frontend"
-npm run lint
-npm test
-npm run build
-```
+`GET /api/predictions` returns nearby validated forecasts. `GET /api/alerts/predictive` applies enabled, minimum-severity, maximum-distance, and route-only preferences in the backend. Predictive alerts are delivered through the shared notification bell and relevant active-trip alerts appear under Plan → Current Trip.
