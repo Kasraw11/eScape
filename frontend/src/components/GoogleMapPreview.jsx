@@ -2,7 +2,14 @@
 
 import { useCallback, useRef, useState } from "react";
 import ExpandedMapModal from "./ExpandedMapModal.jsx";
-import MapCanvas from "./MapCanvas.jsx";
+import dynamic from "next/dynamic";
+
+const MapCanvas = dynamic(
+  () => import("./MapCanvas.jsx"),
+  {
+    ssr: false,
+  }
+);
 import RouteLegend from "./RouteLegend.jsx";
 import SensoryIndicator from "./SensoryIndicator.jsx";
 

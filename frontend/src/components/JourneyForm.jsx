@@ -1,59 +1,196 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import CrowdToleranceSelector from "./CrowdToleranceSelector.jsx";
+import { useRef, useState } from "react";
 import LocationInput from "./LocationInput.jsx";
-import TravelModeSelector from "./TravelModeSelector.jsx";
 
-export const CBD_LOCATIONS = [
-  { id: "bourke-street-mall", label: "Bourke Street Mall", formattedAddress: "Bourke Street Mall, Melbourne VIC", latitude: -37.81362, longitude: 144.96307 },
-  { id: "flinders-street", label: "Flinders Street Station", formattedAddress: "Flinders Street Station, Melbourne VIC", latitude: -37.81827, longitude: 144.96706 },
-  { id: "flagstaff-gardens", label: "Flagstaff Gardens", formattedAddress: "Flagstaff Gardens, Melbourne VIC", latitude: -37.81007, longitude: 144.95577 },
-  { id: "state-library", label: "State Library Victoria", formattedAddress: "328 Swanston Street, Melbourne VIC", latitude: -37.80981, longitude: 144.96519 },
-];
+export default function JourneyForm({
+  onSubmit,
+  loading,
+}) {
+  // Selected locations.
+  const [origin, setOrigin] = useState(null);
+  const [destination, setDestination] =
+    useState(null);
 
-function insideSupportedCbd(place) { return place && place.latitude >= -37.829 && place.latitude <= -37.795 && place.longitude >= 144.936 && place.longitude <= 144.991; }
+  // References to LocationInput components.
+  const originInputRef = useRef(null);
+  const destinationInputRef = useRef(null);
 
-export default function JourneyForm({ onSubmit, loading }) {
-  const [originText, setOriginText] = useState(CBD_LOCATIONS[0].label);
-  const [destinationText, setDestinationText] = useState(CBD_LOCATIONS[1].label);
-  const [origin, setOrigin] = useState(CBD_LOCATIONS[0]);
-  const [destination, setDestination] = useState(CBD_LOCATIONS[1]);
-  const [travelMode, setTravelMode] = useState("walking");
-  const [crowdThreshold, setCrowdThreshold] = useState(3);
-  const [submitted, setSubmitted] = useState(false);
-  const [locationNotice, setLocationNotice] = useState("");
+  // Messages shown to the user.
+  const [error, setError] = useState("");
+  const [locationNotice, setLocationNotice] =
+    useState("");
 
-  const errors = useMemo(() => {
-    const next = {};
-    if (!originText.trim()) next.origin = "Enter a starting location."; else if (!origin) next.origin = "Select a valid location from the suggestions.";
-    if (!destinationText.trim()) next.destination = "Enter a destination."; else if (!destination) next.destination = "Select a valid location from the suggestions.";
-    if (origin && destination && origin.latitude === destination.latitude && origin.longitude === destination.longitude) next.destination = "Origin and destination cannot be the same.";
-    else if (destination && !insideSupportedCbd(destination)) next.destination = "Destination must be within Melbourne CBD.";
-    if (!["walking", "transit"].includes(travelMode)) next.travelMode = "Select a valid travel mode.";
-    if (!Number.isInteger(Number(crowdThreshold)) || Number(crowdThreshold) < 1 || Number(crowdThreshold) > 5) next.crowdThreshold = "Choose a crowd tolerance from 1 to 5.";
-    return next;
-  }, [crowdThreshold, destination, destinationText, origin, originText, travelMode]);
-
+  /**
+   * Gets the user's current browser location
+   * and uses it as the journey origin.
+   */
   function useCurrentLocation() {
-    setLocationNotice("Your location is used only to set the journey origin.");
-    if (!globalThis.navigator?.geolocation) { setLocationNotice("Current location is unavailable. Enter an origin manually."); return; }
-    globalThis.navigator.geolocation.getCurrentPosition((position) => {
-      const place = { id: "current", label: "Current location", formattedAddress: "Current location", latitude: position.coords.latitude, longitude: position.coords.longitude };
-      setOrigin(place); setOriginText(place.label); setLocationNotice("Current location selected as origin.");
-    }, (error) => setLocationNotice(error.code === error.PERMISSION_DENIED ? "Location permission was denied. Enter an origin manually." : error.code === error.TIMEOUT ? "Location lookup timed out. Enter an origin manually." : "Current location is unavailable. Enter an origin manually."), { timeout: 10000, maximumAge: 120000 });
+    if (!navigator.geolocation) {
+      setLocationNotice(
+        "Current location is unavailable."
+      );
+      return;
+    }
+
+    setLocationNotice(
+      "Finding your location..."
+    );
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setOrigin({
+          id: "current",
+          label: "Current location",
+          formattedAddress:
+            "Current location",
+          latitude:
+            position.coords.latitude,
+          longitude:
+            position.coords.longitude,
+        });
+
+        setLocationNotice(
+          "Current location selected."
+        );
+      },
+      () => {
+        setLocationNotice(
+          "Unable to access your location. Enter it manually."
+        );
+      }
+    );
   }
 
-  function submit(event) {
-    event.preventDefault(); setSubmitted(true);
-    if (Object.keys(errors).length) return;
-    onSubmit({ origin_latitude: origin.latitude, origin_longitude: origin.longitude, destination_latitude: destination.latitude, destination_longitude: destination.longitude, travel_mode: travelMode, preferred_crowd_threshold: Number(crowdThreshold) }, { origin, destination, travelMode, crowdThreshold: Number(crowdThreshold) });
+  /**
+   * Resolves typed place names automatically,
+   * validates them, then sends coordinates
+   * to RoutePlannerPage.
+   */
+  async function submit(event) {
+    event.preventDefault();
+
+    setError("");
+    setLocationNotice("");
+
+    // Use already-selected locations when available.
+    // Otherwise automatically search the typed text.
+    const resolvedOrigin =
+      origin ||
+      (await originInputRef.current?.resolveLocation());
+
+    const resolvedDestination =
+      destination ||
+      (await destinationInputRef.current?.resolveLocation());
+
+    // Missing or unresolved location.
+    if (
+      !resolvedOrigin ||
+      !resolvedDestination
+    ) {
+      setError(
+        "Please enter a valid starting location and destination."
+      );
+      return;
+    }
+
+    // Prevent the same place being used twice.
+    if (
+      resolvedOrigin.latitude ===
+        resolvedDestination.latitude &&
+      resolvedOrigin.longitude ===
+        resolvedDestination.longitude
+    ) {
+      setError(
+        "Origin and destination cannot be the same."
+      );
+      return;
+    }
+
+    // Send only coordinates to the route-planning backend.
+    await onSubmit({
+      origin_latitude:
+        resolvedOrigin.latitude,
+      origin_longitude:
+        resolvedOrigin.longitude,
+      destination_latitude:
+        resolvedDestination.latitude,
+      destination_longitude:
+        resolvedDestination.longitude,
+    });
   }
 
-  return <form className="journey-form" onSubmit={submit} noValidate aria-label="Journey planner"><div className="field-grid">
-    <LocationInput label="From" accessibleLabel="Origin" value={originText} placeholder="Enter starting location" suggestions={CBD_LOCATIONS} selectedPlace={origin} loading={loading} error={submitted ? errors.origin : ""} showCurrentLocation onChange={(value) => { setOriginText(value); setOrigin(null); }} onSelectSuggestion={(place) => { setOrigin(place); setOriginText(place.label); }} onClear={() => { setOrigin(null); setOriginText(""); }} onUseCurrentLocation={useCurrentLocation} />
-    <LocationInput label="To" accessibleLabel="Destination" value={destinationText} placeholder="Enter destination" suggestions={CBD_LOCATIONS} selectedPlace={destination} loading={loading} error={submitted ? errors.destination : ""} onChange={(value) => { setDestinationText(value); setDestination(null); }} onSelectSuggestion={(place) => { setDestination(place); setDestinationText(place.label); }} onClear={() => { setDestination(null); setDestinationText(""); }} />
-    <TravelModeSelector value={travelMode} onChange={setTravelMode} disabled={loading} error={submitted ? errors.travelMode : undefined} />
-    <CrowdToleranceSelector value={crowdThreshold} onChange={setCrowdThreshold} disabled={loading} error={submitted ? errors.crowdThreshold : ""} />
-  </div>{locationNotice ? <p className="field-notice" role="status">{locationNotice}</p> : null}<button className="primary-button journey-form__submit" type="submit" disabled={loading}>{loading ? "Finding routes…" : <><span>Find routes</span><span aria-hidden="true">→</span></>}</button><p className="planner-data-note">Routes use real-time and historical sensory data when available.</p><div className="sr-only" aria-live="assertive">{submitted ? Object.values(errors).join(" ") : ""}</div></form>;
+  return (
+    <form
+      className="journey-form"
+      onSubmit={submit}
+    >
+      <div className="field-grid">
+        {/* Starting location */}
+        <LocationInput
+          ref={originInputRef}
+          label="From"
+          accessibleLabel="Origin"
+          placeholder="Enter starting location"
+          selectedPlace={origin}
+          loading={loading}
+          showCurrentLocation
+          onSelectSuggestion={setOrigin}
+          onClear={() => setOrigin(null)}
+          onUseCurrentLocation={
+            useCurrentLocation
+          }
+        />
+
+        {/* Destination */}
+        <LocationInput
+          ref={destinationInputRef}
+          label="To"
+          accessibleLabel="Destination"
+          placeholder="Enter destination"
+          selectedPlace={destination}
+          loading={loading}
+          onSelectSuggestion={setDestination}
+          onClear={() =>
+            setDestination(null)
+          }
+        />
+      </div>
+
+      {locationNotice && (
+        <p
+          className="field-notice"
+          role="status"
+        >
+          {locationNotice}
+        </p>
+      )}
+
+      {error && (
+        <p
+          className="field-error"
+          role="alert"
+        >
+          {error}
+        </p>
+      )}
+
+      <button
+        className="primary-button journey-form__submit"
+        type="submit"
+        disabled={loading}
+      >
+        {loading ? (
+          "Finding routes…"
+        ) : (
+          <>
+            <span>Find routes</span>
+            <span aria-hidden="true">
+              →
+            </span>
+          </>
+        )}
+      </button>
+    </form>
+  );
 }
