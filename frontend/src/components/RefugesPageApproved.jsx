@@ -36,12 +36,11 @@ function selectedDateTimeIso(value) {
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
-function locationError(error) {
-  if (!error) return "Location could not be obtained. Choose a Melbourne location manually.";
-  if (error.code === error.PERMISSION_DENIED) return "Location permission was denied. Choose a Melbourne location manually.";
-  if (error.code === error.POSITION_UNAVAILABLE) return "Your position is unavailable. Choose a Melbourne location manually.";
-  if (error.code === error.TIMEOUT) return "Location lookup timed out. Choose a Melbourne location manually.";
-  return "Location could not be obtained. Choose a Melbourne location manually.";
+// AC7 requires this exact wording for every case where the location cannot be determined.
+const LOCATION_UNAVAILABLE_MESSAGE = "We couldn't access your current location due to a network connection issue. Check your internet connection and try again, or select your location manually.";
+
+function locationError() {
+  return LOCATION_UNAVAILABLE_MESSAGE;
 }
 
 function distanceLabel(distanceM) {
@@ -52,7 +51,7 @@ function distanceLabel(distanceM) {
 export default function RefugesPage() {
   const [location, setLocation] = useState(null);
   const [locationNotice, setLocationNotice] = useState("");
-  const [permissionRequested, setPermissionRequested] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
   const [manualQuery, setManualQuery] = useState("Melbourne CBD");
   const [radius, setRadius] = useState(2000);
   const [selectedDateTime, setSelectedDateTime] = useState(localDateTimeValue);
@@ -64,7 +63,6 @@ export default function RefugesPage() {
   const [details, setDetails] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [emptyMessage, setEmptyMessage] = useState("");
   const [directionsMessage, setDirectionsMessage] = useState("");
   const [feedbackSummary, setFeedbackSummary] = useState(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
@@ -74,22 +72,37 @@ export default function RefugesPage() {
   const [feedbackNotice, setFeedbackNotice] = useState("");
   const leaveFeedbackRef = useRef(null);
 
+  // AC7: the user must be able to retry after a failed lookup
+  const locationRequestInFlight = useRef(false);
+
   const requestBrowserLocation = useCallback(() => {
-    if (permissionRequested) return;
-    setPermissionRequested(true);
+    if (locationRequestInFlight.current) return;
+    locationRequestInFlight.current = true;
+    setLocationLoading(true);
+
+    const finish = () => {
+      locationRequestInFlight.current = false;
+      setLocationLoading(false);
+    };
+
     if (!globalThis.navigator.geolocation) {
-      setLocationNotice("Geolocation is not supported by this browser. Choose a Melbourne location manually.");
+      setLocationNotice(locationError());
+      finish();
       return;
     }
     globalThis.navigator.geolocation.getCurrentPosition(
       (position) => {
         setLocation({ label: "Current location", latitude: position.coords.latitude, longitude: position.coords.longitude });
         setLocationNotice("Current location found. Nearby refuges are being updated.");
+        finish();
       },
-      (geolocationError) => setLocationNotice(locationError(geolocationError)),
+      () => {
+        setLocationNotice(locationError());
+        finish();
+      },
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 120_000 },
     );
-  }, [permissionRequested]);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,7 +123,6 @@ export default function RefugesPage() {
       .then((response) => {
         const next = response.results || [];
         setRefuges(next);
-        setEmptyMessage(response.message || "");
         setSelectedId((current) => next.some((item) => item.refuge_id === current) ? current : next[0]?.refuge_id || null);
         setDetails(null);
       })
@@ -235,7 +247,7 @@ export default function RefugesPage() {
       <div className="refuge-layout">
         <section className="refuge-controls glass-panel" aria-labelledby="location-heading">
           <div className="refuge-section-heading"><h2 id="location-heading">Location</h2></div>
-          <button type="button" className="current-location-button" onClick={requestBrowserLocation} disabled={permissionRequested}><span>{location?.label || "Use my current location"}</span><span aria-hidden="true">◎</span></button>
+          <button type="button" className="current-location-button" onClick={requestBrowserLocation} disabled={locationLoading}><span>{locationLoading ? "Finding your location…" : location?.label || "Use my current location"}</span><span aria-hidden="true">◎</span></button>
           <form className="manual-location-form refuge-manual-location" onSubmit={chooseManualLocation}>
             <label htmlFor="manual-location">Search suburb or landmark</label>
             <div><input id="manual-location" list="melbourne-locations" value={manualQuery} onChange={(event) => setManualQuery(event.target.value)} /><button type="submit">Use selected location</button></div>
@@ -268,7 +280,7 @@ export default function RefugesPage() {
         <section className="refuge-results glass-panel" aria-labelledby="refuge-results-heading">
           <div className="results-heading"><div><p className="section-kicker">Nearest first</p><h2 id="refuge-results-heading">Refuge results</h2></div><span>{visibleRefuges.length} shown</span></div>
           <div aria-live="polite">{loading ? <p>Searching nearby refuges…</p> : null}{error ? <p className="error-state" role="alert">{error}</p> : null}</div>
-          {!loading && !error && visibleRefuges.length === 0 ? <div className="empty-state"><h3>No nearby refuge locations were found</h3><p>{emptyMessage || "Change the search, select more types, or increase the distance."}</p></div> : null}
+          {!loading && !error && visibleRefuges.length === 0 ? <div className="empty-state"><h3>No refuges found, please expand search radius</h3></div> : null}
           <div className="refuge-list">{visibleRefuges.map((item) => (
             <article key={item.refuge_id} className={`refuge-card ${item.refuge_id === selectedId ? "refuge-card--selected" : ""}`}>
               <button type="button" className="refuge-card__select" onClick={() => selectRefuge(item)} aria-label={`View details for ${item.name}`}>
@@ -286,6 +298,7 @@ export default function RefugesPage() {
           <div className="refuge-detail__heading"><div><p className="section-kicker">Selected refuge</p><h2 id="refuge-detail-heading">{selected.name}</h2><p>{selected.category} · {distanceLabel(selected.distance_m)}</p></div><span className={`opening-badge opening-badge--${selected.opening_status}`}>{openingLabel(selected.opening_status)}</span></div>
           <p className="refuge-detail__description">{selected.sensory_suitability_description || "Description unavailable"}</p>
           <dl className="refuge-detail__facts">
+            <div><dt>Address</dt><dd>{selected.address || "Address unavailable"}</dd></div>
             <div><dt>Opening hours</dt><dd>{selected.opening_hours_summary || selected.operating_hours || openingLabel(selected.opening_status)}</dd></div>
             <div><dt>Walking time</dt><dd>{selected.estimated_travel_minutes} min · {distanceLabel(selected.distance_m)}</dd></div>
             <div><dt>Accessibility</dt><dd>{selected.accessibility_notes || "Accessibility information unavailable"}</dd></div>
