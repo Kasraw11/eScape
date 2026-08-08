@@ -33,7 +33,7 @@ input {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(300px, 380px) minmax(380px, 1fr) minmax(320px, 420px);
+  grid-template-columns: minmax(300px, 380px) minmax(360px, 1fr) minmax(320px, 420px);
   gap: 14px;
   max-width: 1440px;
   min-height: calc(100vh - 40px);
@@ -219,9 +219,9 @@ fieldset p {
 
 .map-panel {
   display: grid;
-  grid-template-rows: auto minmax(360px, 1fr) auto auto;
+  grid-template-rows: auto auto auto auto;
   gap: 14px;
-  padding: 18px;
+  padding: 16px;
 }
 
 .icon-button {
@@ -231,7 +231,8 @@ fieldset p {
 
 .real-map {
   overflow: hidden;
-  min-height: 420px;
+  height: clamp(260px, 34vh, 360px);
+  min-height: 260px;
   border: 1px solid #b9cbc4;
   border-radius: 8px;
   background: #d7e7e1;
@@ -240,7 +241,7 @@ fieldset p {
 .leaflet-map {
   width: 100%;
   height: 100%;
-  min-height: 420px;
+  min-height: 260px;
 }
 
 .leaflet-container {
@@ -266,13 +267,13 @@ fieldset p {
 .insight-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 8px;
 }
 
 .metric {
   display: grid;
   gap: 4px;
-  padding: 12px;
+  padding: 10px;
   background: #f0f5f2;
   border-radius: 8px;
 }
@@ -291,8 +292,8 @@ fieldset p {
 
 .live-crowd-panel {
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  gap: 10px;
+  padding: 12px;
   background: #ffffff;
   border: 1px solid #d4e1dc;
   border-radius: 8px;
@@ -654,12 +655,13 @@ dd {
   }
 
   .map-panel {
-    grid-template-rows: auto 360px auto;
+    grid-template-rows: auto auto auto auto;
   }
 
   .real-map,
   .leaflet-map {
-    min-height: 360px;
+    height: 300px;
+    min-height: 300px;
   }
 
   .insight-grid {

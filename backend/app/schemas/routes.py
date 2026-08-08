@@ -43,6 +43,7 @@ class RoutePlanResponse(BaseModel):
     status: str
     message: str
     requested_threshold: CrowdLevel
+    route_geometry_source: str = "demo"
     origin: Coordinate | None = None
     destination: Coordinate | None = None
     data_confidence: str = "limited"

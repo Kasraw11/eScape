@@ -27,10 +27,10 @@ class Settings(BaseSettings):
         default=10.0,
         alias="EXTERNAL_API_TIMEOUT_SECONDS",
     )
-    google_maps_api_key: str = Field(default="", alias="GOOGLE_MAPS_API_KEY")
-    google_routes_base_url: str = Field(
-        default="https://routes.googleapis.com",
-        alias="GOOGLE_ROUTES_BASE_URL",
+    openrouteservice_api_key: str = Field(default="", alias="OPENROUTESERVICE_API_KEY")
+    openrouteservice_base_url: str = Field(
+        default="https://api.openrouteservice.org",
+        alias="OPENROUTESERVICE_BASE_URL",
     )
 
     model_config = SettingsConfigDict(

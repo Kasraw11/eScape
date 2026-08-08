@@ -51,6 +51,7 @@ type RoutePlanResponse = {
   status: string;
   message: string;
   requested_threshold: CrowdThreshold;
+  route_geometry_source: string;
   data_confidence: string;
   limitations: string[];
   routes: RouteOption[];
@@ -134,6 +135,7 @@ function App() {
   const recommendedRoute = routeResult?.routes.find((route) => route.is_recommended);
   const selectedRoute =
     routeResult?.routes.find((route) => route.route_id === selectedRouteId) ?? recommendedRoute ?? null;
+  const hasRealRouteGeometry = routeResult?.route_geometry_source === "openrouteservice" || routeResult?.route_geometry_source === "osrm";
   const coverageLabel =
     activeSensors.length > 70 ? "strong" : activeSensors.length > 25 ? "partial" : "limited";
 
@@ -264,7 +266,10 @@ function App() {
 
           <div className="status-strip">
             <ShieldCheck size={18} aria-hidden="true" />
-            <span>Live crowd scoring is active. Google walking routes are used when a server-side API key is configured.</span>
+            <span>
+              Live crowd scoring is active. Real walking geometry appears only when openrouteservice is configured;
+              otherwise the map shows sensors and refuges without a route line.
+            </span>
           </div>
         </aside>
 
@@ -279,7 +284,11 @@ function App() {
             </button>
           </div>
 
-          <InteractiveMap sensors={activeSensors} route={selectedRoute} refuges={refuges?.refuges ?? []} />
+          <InteractiveMap
+            sensors={activeSensors}
+            route={hasRealRouteGeometry ? selectedRoute : null}
+            refuges={refuges?.refuges ?? []}
+          />
 
           <div className="insight-grid">
             <StatusMetric label="Sensor records" value={sensorStatus === "ready" ? String(sensors.length) : "--"} />

@@ -26,6 +26,7 @@ def plan_routes(
     live_counts: list[PedestrianCount] | None = None,
     route_options: list[RouteOption] | None = None,
     count_source_label: str = "City of Melbourne live past-hour pedestrian counts",
+    route_geometry_source: str = "demo",
 ) -> RoutePlanResponse:
     origin = resolve_place(payload.origin.label, payload.origin.coordinates)
     destination = resolve_place(payload.destination.label, payload.destination.coordinates)
@@ -105,11 +106,12 @@ def plan_routes(
         status="planned",
         message=message,
         requested_threshold=payload.crowd_threshold,
+        route_geometry_source=route_geometry_source,
         origin=origin,
         destination=destination,
         data_confidence="limited",
         limitations=[
-            "Route geometry is deterministic MVP demo data until Google walking routes are connected.",
+            "Route geometry is deterministic MVP demo data until openrouteservice is connected.",
             "Crowd scoring uses nearby sensor readings and does not cover streets without sensors.",
             "Sensor coverage gaps must not be interpreted as low congestion.",
         ],
@@ -142,21 +144,7 @@ def build_route_option(
     base_distance = max(250, haversine_m(origin, destination))
     distance_m = round(base_distance * distance_multiplier)
     duration_min = max(4, round(distance_m / 80))
-    midpoint = Coordinate(
-        latitude=(origin.latitude + destination.latitude) / 2,
-        longitude=(origin.longitude + destination.longitude) / 2,
-    )
-
-    if route_id == "calmer":
-        midpoint = Coordinate(
-            latitude=midpoint.latitude + 0.0022,
-            longitude=midpoint.longitude - 0.0014,
-        )
-    elif route_id == "direct":
-        midpoint = Coordinate(
-            latitude=midpoint.latitude - 0.0012,
-            longitude=midpoint.longitude + 0.0011,
-        )
+    waypoints = build_waypoints(route_id, origin, destination)
 
     reason = build_reason(crowd_level, high_segments, medium_segments)
 
@@ -174,11 +162,58 @@ def build_route_option(
         data_source="MVP demo assumptions",
         recommendation_reason=reason,
         is_recommended=False,
-        segments=[
-            RouteSegment(start=origin, end=midpoint, sensory_level=crowd_level),
-            RouteSegment(start=midpoint, end=destination, sensory_level=crowd_level),
-        ],
+        segments=waypoints_to_segments(waypoints, crowd_level),
     )
+
+
+def build_waypoints(route_id: str, origin: Coordinate, destination: Coordinate) -> list[Coordinate]:
+    if route_id == "calmer":
+        north_lat = origin.latitude + 0.0022
+        west_lng = origin.longitude - 0.0010
+        east_lng = destination.longitude + 0.0006
+        south_lat = destination.latitude + 0.0004
+        return [
+            origin,
+            Coordinate(latitude=north_lat, longitude=origin.longitude),
+            Coordinate(latitude=north_lat, longitude=west_lng),
+            Coordinate(latitude=south_lat, longitude=west_lng),
+            Coordinate(latitude=south_lat, longitude=east_lng),
+            destination,
+        ]
+
+    if route_id == "direct":
+        north_lat = origin.latitude + 0.0011
+        east_lng = origin.longitude + 0.0018
+        south_lat = destination.latitude + 0.0002
+        return [
+            origin,
+            Coordinate(latitude=north_lat, longitude=origin.longitude),
+            Coordinate(latitude=north_lat, longitude=east_lng),
+            Coordinate(latitude=south_lat, longitude=east_lng),
+            Coordinate(latitude=south_lat, longitude=destination.longitude),
+            destination,
+        ]
+
+    north_lat = origin.latitude + 0.0016
+    east_lng = origin.longitude + 0.0007
+    west_lng = destination.longitude - 0.0008
+    south_lat = destination.latitude + 0.0003
+
+    return [
+        origin,
+        Coordinate(latitude=north_lat, longitude=origin.longitude),
+        Coordinate(latitude=north_lat, longitude=east_lng),
+        Coordinate(latitude=south_lat, longitude=east_lng),
+        Coordinate(latitude=south_lat, longitude=west_lng),
+        destination,
+    ]
+
+
+def waypoints_to_segments(waypoints: list[Coordinate], crowd_level: CrowdLevel) -> list[RouteSegment]:
+    return [
+        RouteSegment(start=start, end=end, sensory_level=crowd_level)
+        for start, end in zip(waypoints, waypoints[1:])
+    ]
 
 
 def apply_live_crowd_scoring(

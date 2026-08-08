@@ -19,7 +19,7 @@ Health check:
 GET http://127.0.0.1:8000/health
 ```
 
-The route-planning endpoint currently returns deterministic MVP route options for known Melbourne CBD places and scores them with nearby live pedestrian sensor readings where available. Google walking-route geometry, full per-segment scoring and refuge lookup are intentionally left for the next MVP phases.
+The route-planning endpoint currently returns deterministic MVP route options for known Melbourne CBD places and scores them with nearby live pedestrian sensor readings where available. openrouteservice walking-route geometry, full per-segment scoring and refuge lookup are intentionally left for the next MVP phases.
 
 Sensor locations can be fetched from City of Melbourne Open Data:
 
@@ -61,15 +61,15 @@ Open:
 http://127.0.0.1:5173
 ```
 
-The current UI supports route request validation, crowd preference selection, City of Melbourne pedestrian sensor coverage, a live crowd snapshot, three explainable route-option cards and nearby sensory-refuge candidates. Route cards show nearby matched sensor counts, max/average pedestrian readings and the data source. The map uses OpenStreetMap/Leaflet for interactive display; route geometry is deterministic until a real walking-routing provider is connected.
+The current UI supports route request validation, crowd preference selection, City of Melbourne pedestrian sensor coverage, a live crowd snapshot, three explainable route-option cards and nearby sensory-refuge candidates. Route cards show nearby matched sensor counts, max/average pedestrian readings and the data source. The map uses OpenStreetMap/Leaflet for interactive display; route geometry is deterministic until openrouteservice is connected.
 
-## Google Routes
+## openrouteservice
 
-The backend can use Google Routes API for real walking-route geometry when `GOOGLE_MAPS_API_KEY` is set.
+The backend can use openrouteservice for real walking-route geometry when `OPENROUTESERVICE_API_KEY` is set.
 
 ```bash
-GOOGLE_MAPS_API_KEY=your-google-maps-platform-key
-GOOGLE_ROUTES_BASE_URL=https://routes.googleapis.com
+OPENROUTESERVICE_API_KEY=your-openrouteservice-key
+OPENROUTESERVICE_BASE_URL=https://api.openrouteservice.org
 ```
 
 If no key is configured, the backend falls back to deterministic MVP route geometry so the app remains testable. The key is used server-side only and should not be committed.
