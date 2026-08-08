@@ -26,7 +26,10 @@ function responseErrorMessage(response, payload) {
     : validationMessage(payload?.detail);
   const message = typeof payload?.message === "string" ? payload.message : null;
 
-  if (response.status === 422) return detail || message || "The backend rejected the journey details. Check the origin, destination, and travel mode.";
+  if (response.status === 422)
+    return detail || message ||
+      "The backend rejected the journey details. Check the origin and destination.";
+
   if (response.status === 404) return detail || message || "The local route-planning endpoint was not found.";
   if (response.status === 502) return detail || message || "The external route provider is unavailable.";
   if (response.status === 503) return detail || message || "The local backend is temporarily unavailable. Check its database and external-service configuration.";
@@ -34,7 +37,10 @@ function responseErrorMessage(response, payload) {
   if (detail || message) return detail || message;
   return `Route request failed with status ${response.status}.`;
 }
-
+/**
+ * Sends journey coordinates to the backend
+ * and returns available route options.
+ */
 export async function planRoute(payload) {
   let response;
   try {

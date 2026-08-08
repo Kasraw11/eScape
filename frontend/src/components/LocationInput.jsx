@@ -1,65 +1,408 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { hasConfiguredMapsKey, loadGoogleMaps } from "../services/googleMapsLoader.js";
+import {
+  forwardRef,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useState,
+} from "react";
 
-export default function LocationInput({ label, accessibleLabel, value, placeholder, suggestions = [], selectedPlace, loading, error, showCurrentLocation = false, onChange, onSelectSuggestion, onClear, onUseCurrentLocation }) {
+const LocationInput = forwardRef(function LocationInput(
+  {
+    label,
+    accessibleLabel,
+    placeholder,
+    selectedPlace,
+    loading,
+    error,
+    showCurrentLocation = false,
+    onSelectSuggestion,
+    onClear,
+    onUseCurrentLocation,
+  },
+  ref
+) {
   const id = useId();
-  const listId = `${id}-suggestions`;
-  const [remoteSuggestions, setRemoteSuggestions] = useState([]);
+
+  // Text visible in the input.
+  const [value, setValue] = useState("");
+
+  // Places returned from OpenStreetMap/Nominatim.
+  const [suggestions, setSuggestions] = useState([]);
+
+  // Controls the suggestions dropdown.
   const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1);
+
+  // Search status message.
   const [notice, setNotice] = useState("");
-  const requestId = useRef(0);
-  const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY;
-  const configured = hasConfiguredMapsKey(mapsKey);
 
-  const localSuggestions = useMemo(() => {
-    const query = value.trim().toLowerCase();
-    if (query.length < 2) return [];
-    return suggestions.filter((item) => item.label.toLowerCase().includes(query)).slice(0, 5);
-  }, [suggestions, value]);
-  const visibleSuggestions = remoteSuggestions.length ? remoteSuggestions : localSuggestions;
+  // Prevent repeated searches.
+  const [searching, setSearching] = useState(false);
 
+  /**
+   * Keep the input synchronized with the selected place.
+   */
   useEffect(() => {
-    const query = value.trim();
-    if (query.length < 3 || selectedPlace) { setRemoteSuggestions([]); return undefined; }
-    if (!configured) { setNotice("Google location suggestions are unavailable. You can still type or choose a known Melbourne CBD location."); return undefined; }
-    const currentRequest = ++requestId.current;
-    const timer = window.setTimeout(() => {
-      loadGoogleMaps(mapsKey).then((maps) => {
-        const service = new maps.places.AutocompleteService();
-        service.getPlacePredictions({ input: query, componentRestrictions: { country: "au" }, locationBias: { center: { lat: -37.8136, lng: 144.9631 }, radius: 8000 } }, (predictions, status) => {
-          if (currentRequest !== requestId.current) return;
-          if (status === maps.places.PlacesServiceStatus.OK) {
-            setRemoteSuggestions((predictions || []).slice(0, 5).map((prediction) => ({ id: prediction.place_id, label: prediction.description, placeId: prediction.place_id })));
-            setNotice(""); setOpen(true);
-          } else setRemoteSuggestions([]);
-        });
-      }).catch(() => setNotice("Google location suggestions could not load. Manual typing remains available."));
-    }, 300);
-    return () => window.clearTimeout(timer);
-  }, [configured, mapsKey, selectedPlace, value]);
+    if (selectedPlace) {
+      setValue(selectedPlace.label || "");
+    }
+  }, [selectedPlace]);
 
-  function select(item) {
-    if (item.latitude != null) { onSelectSuggestion(item); setOpen(false); setActiveIndex(-1); return; }
-    loadGoogleMaps(mapsKey).then((maps) => {
-      const node = document.createElement("div");
-      new maps.places.PlacesService(node).getDetails({ placeId: item.placeId, fields: ["place_id", "name", "formatted_address", "geometry"] }, (place, status) => {
-        if (status !== maps.places.PlacesServiceStatus.OK || !place?.geometry?.location) { setNotice("That location could not be resolved. Try another suggestion."); return; }
-        onSelectSuggestion({ id: place.place_id, placeId: place.place_id, label: place.name || item.label, formattedAddress: place.formatted_address || item.label, latitude: place.geometry.location.lat(), longitude: place.geometry.location.lng() });
-        setOpen(false); setActiveIndex(-1);
-      });
-    }).catch(() => setNotice("That location could not be resolved. Manual typing remains available."));
+  /**
+   * Converts one Nominatim result into the format
+   * expected by JourneyForm.
+   */
+  function convertPlace(item, fallbackLabel = "Unknown location") {
+    return {
+      id: String(item.place_id),
+
+      label:
+        item.namedetails?.name ||
+        item.name ||
+        item.display_name?.split(",")[0] ||
+        fallbackLabel,
+
+      formattedAddress: item.display_name,
+
+      latitude: Number(item.lat),
+      longitude: Number(item.lon),
+    };
   }
 
-  return <div className="location-input form-field"><label htmlFor={id}>{label}</label><div className="location-input__control"><input id={id} aria-label={accessibleLabel} role="combobox" aria-autocomplete="list" aria-expanded={open && visibleSuggestions.length > 0} aria-controls={listId} aria-activedescendant={activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined} aria-invalid={Boolean(error)} aria-describedby={[error ? `${id}-error` : "", notice ? `${id}-notice` : ""].filter(Boolean).join(" ") || undefined} value={value} placeholder={placeholder} disabled={loading} autoComplete="off" onChange={(event) => { onChange(event.target.value); setOpen(true); setActiveIndex(-1); }} onFocus={() => visibleSuggestions.length && setOpen(true)} onKeyDown={(event) => {
-    if (event.key === "ArrowDown" && visibleSuggestions.length) { event.preventDefault(); setOpen(true); setActiveIndex((current) => Math.min(current + 1, visibleSuggestions.length - 1)); }
-    if (event.key === "ArrowUp" && visibleSuggestions.length) { event.preventDefault(); setActiveIndex((current) => Math.max(current - 1, 0)); }
-    if (event.key === "Enter" && activeIndex >= 0) { event.preventDefault(); select(visibleSuggestions[activeIndex]); }
-    if (event.key === "Escape") { setOpen(false); setActiveIndex(-1); }
-  }} />{value ? <button type="button" className="location-input__clear" onClick={onClear} aria-label={`Clear ${(accessibleLabel || label).toLowerCase()}`}>×</button> : null}</div>
-    {showCurrentLocation ? <button type="button" className="text-button" onClick={onUseCurrentLocation}>Use current location</button> : null}
-    {open && visibleSuggestions.length ? <ul className="place-suggestions" id={listId} role="listbox" aria-label={`${label} suggestions`}>{visibleSuggestions.map((item, index) => <li id={`${listId}-${index}`} key={item.id || item.placeId || item.label} role="option" aria-selected={index === activeIndex} onMouseDown={(event) => event.preventDefault()} onClick={() => select(item)}>{item.label}</li>)}</ul> : null}
-    <span className="sr-only" aria-live="polite">{open ? `${visibleSuggestions.length} suggestions available.` : ""}</span>{error ? <strong className="field-error" id={`${id}-error`}>{error}</strong> : null}{notice ? <small className="field-notice" id={`${id}-notice`}>{notice}</small> : null}</div>;
-}
+  /**
+   * Searches OpenStreetMap/Nominatim and shows
+   * multiple location suggestions.
+   */
+  async function searchLocations() {
+    const query = value.trim();
+
+    if (query.length < 3) {
+      setNotice("Enter at least 3 characters.");
+      setSuggestions([]);
+      setOpen(false);
+      return;
+    }
+
+    try {
+      setSearching(true);
+      setNotice("Searching...");
+      setSuggestions([]);
+      setOpen(false);
+
+      const params = new URLSearchParams({
+        q: `${query}, Melbourne, Victoria, Australia`,
+        format: "jsonv2",
+        addressdetails: "1",
+        namedetails: "1",
+        limit: "5",
+        countrycodes: "au",
+        "accept-language": "en",
+      });
+
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?${params.toString()}`
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Location search failed with status ${response.status}`
+        );
+      }
+
+      const data = await response.json();
+
+      const places = data
+        .map((item) => convertPlace(item))
+        .filter(
+          (place) =>
+            Number.isFinite(place.latitude) &&
+            Number.isFinite(place.longitude)
+        );
+
+      setSuggestions(places);
+
+      if (places.length > 0) {
+        setOpen(true);
+        setNotice("");
+      } else {
+        setOpen(false);
+        setNotice("No locations found.");
+      }
+    } catch (searchError) {
+      console.error(
+        "OSM location search error:",
+        searchError
+      );
+
+      setSuggestions([]);
+      setOpen(false);
+      setNotice(
+        "Unable to search locations right now."
+      );
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  /**
+   * Automatically resolves the typed text into
+   * one location.
+   *
+   * JourneyForm uses this when Find routes is clicked.
+   */
+  async function resolveLocation() {
+    // Already selected, so no search is needed.
+    if (selectedPlace) {
+      return selectedPlace;
+    }
+
+    const query = value.trim();
+
+    // Nothing entered.
+    if (!query) {
+      return null;
+    }
+
+    if (query.length < 3) {
+      setNotice("Enter at least 3 characters.");
+      return null;
+    }
+
+    try {
+      setSearching(true);
+      setNotice("Finding location...");
+
+      const params = new URLSearchParams({
+        q: `${query}, Melbourne, Victoria, Australia`,
+        format: "jsonv2",
+        addressdetails: "1",
+        namedetails: "1",
+        limit: "1",
+        countrycodes: "au",
+        "accept-language": "en",
+      });
+
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?${params.toString()}`
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Location search failed with status ${response.status}`
+        );
+      }
+
+      const data = await response.json();
+
+      if (!data.length) {
+        setNotice(`No location found for "${query}".`);
+        return null;
+      }
+
+      const place = convertPlace(
+        data[0],
+        query
+      );
+
+      if (
+        !Number.isFinite(place.latitude) ||
+        !Number.isFinite(place.longitude)
+      ) {
+        setNotice("Invalid location coordinates.");
+        return null;
+      }
+
+      // Store the resolved location in JourneyForm.
+      onSelectSuggestion?.(place);
+
+      setValue(place.label);
+      setSuggestions([]);
+      setOpen(false);
+      setNotice("");
+
+      return place;
+    } catch (searchError) {
+      console.error(
+        "OSM automatic location search error:",
+        searchError
+      );
+
+      setNotice(
+        "Unable to find this location right now."
+      );
+
+      return null;
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  /**
+   * Exposes resolveLocation() to JourneyForm.
+   */
+  useImperativeHandle(ref, () => ({
+    resolveLocation,
+  }));
+
+  /**
+   * Update input while typing.
+   */
+  function handleChange(event) {
+    const newValue = event.target.value;
+
+    setValue(newValue);
+    setSuggestions([]);
+    setOpen(false);
+    setNotice("");
+
+    if (selectedPlace) {
+      onClear?.();
+    }
+  }
+
+  /**
+   * Select a location from the suggestion list.
+   */
+  function handleSelect(place) {
+    setValue(place.label);
+
+    onSelectSuggestion?.(place);
+
+    setSuggestions([]);
+    setOpen(false);
+    setNotice("");
+  }
+
+  /**
+   * Clear the location.
+   */
+  function handleClear() {
+    setValue("");
+    setSuggestions([]);
+    setOpen(false);
+    setNotice("");
+
+    onClear?.();
+  }
+
+  /**
+   * Enter still allows manual searching.
+   */
+  function handleKeyDown(event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+
+      if (
+        !searching &&
+        value.trim().length >= 3
+      ) {
+        searchLocations();
+      }
+    }
+  }
+
+  return (
+    <div className="location-input">
+      <label htmlFor={id}>
+        {label}
+      </label>
+
+      <div className="location-input__field">
+        <input
+          id={id}
+          aria-label={accessibleLabel}
+          aria-invalid={Boolean(error)}
+          value={value}
+          placeholder={placeholder}
+          disabled={loading}
+          autoComplete="off"
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+        />
+
+        {value && (
+          <button
+            type="button"
+            className="location-input__clear"
+            onClick={handleClear}
+            aria-label={`Clear ${(
+              accessibleLabel || label
+            ).toLowerCase()}`}
+          >
+            ×
+          </button>
+        )}
+      </div>
+
+      <button
+        type="button"
+        className="location-search-button"
+        onClick={searchLocations}
+        disabled={
+          loading ||
+          searching ||
+          value.trim().length < 3
+        }
+      >
+        {searching
+          ? "Searching..."
+          : "Search location"}
+      </button>
+
+      {showCurrentLocation && (
+        <button
+          type="button"
+          className="current-location-button"
+          onClick={onUseCurrentLocation}
+          disabled={loading}
+        >
+          Use current location
+        </button>
+      )}
+
+      {open && suggestions.length > 0 && (
+        <ul className="place-suggestions">
+          {suggestions.map((place) => (
+            <li key={place.id}>
+              <button
+                type="button"
+                onClick={() =>
+                  handleSelect(place)
+                }
+              >
+                <strong>
+                  {place.label}
+                </strong>
+
+                <small>
+                  {place.formattedAddress}
+                </small>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {notice && (
+        <small
+          className="field-notice"
+          role="status"
+        >
+          {notice}
+        </small>
+      )}
+
+      {error && (
+        <strong
+          className="field-error"
+          role="alert"
+        >
+          {error}
+        </strong>
+      )}
+    </div>
+  );
+});
+
+export default LocationInput;
