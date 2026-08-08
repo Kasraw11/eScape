@@ -1,0 +1,200 @@
+erDiagram
+    user_preference ||--o{ journey_request : has
+    journey_request ||--o{ route_option : has
+    route_option ||--o{ route_segment : has
+    route_segment ||--o{ route_sensor_score : has
+    sensor_location ||--o{ historical_pedestrian_count : records
+    sensor_location ||--o{ realtime_pedestrian_count : records
+    sensor_location ||--o{ route_sensor_score : contributes
+    route_option ||--o{ alert : has
+    route_segment ||--o{ alert : may_have
+    sensor_location ||--o{ alert : may_trigger
+    sensor_location ||--o{ sensory_prediction : forecasts
+    sensory_prediction ||--o{ alert : may_trigger
+    route_option ||--o{ route_refuge_recommendation : has
+    point_of_interest ||--o{ route_refuge_recommendation : recommended_as
+    route_option ||--o{ route_transport_stop : has
+    transport_stop ||--o{ route_transport_stop : appears_on
+    route_option ||--o{ journey_feedback : receives
+
+    user_preference {
+        BIGINT preference_id PK "identity"
+        UUID session_id UK "unique, not null"
+        SMALLINT preferred_crowd_threshold "not null, 1 to 5"
+        BOOLEAN notifications_enabled "not null, default true"
+        INTEGER search_radius_m "not null, greater than 0"
+        TIMESTAMPTZ created_at "not null"
+        TIMESTAMPTZ updated_at "not null"
+    }
+
+    journey_request {
+        BIGINT journey_request_id PK "identity"
+        BIGINT preference_id FK
+        NUMERIC origin_latitude "not null, -90 to 90"
+        NUMERIC origin_longitude "not null, -180 to 180"
+        NUMERIC destination_latitude "not null, -90 to 90"
+        NUMERIC destination_longitude "not null, -180 to 180"
+        VARCHAR travel_mode "not null"
+        TIMESTAMPTZ requested_at "not null"
+    }
+
+    route_option {
+        BIGINT route_id PK "identity"
+        BIGINT journey_request_id FK
+        VARCHAR google_route_id
+        TEXT encoded_polyline
+        INTEGER estimated_travel_minutes "not null"
+        VARCHAR sensory_indicator "not null"
+        NUMERIC total_sensory_score
+        VARCHAR data_availability_status "not null"
+        BOOLEAN is_recommended "not null, default false"
+        TIMESTAMPTZ created_at "not null"
+        TIMESTAMPTZ expires_at
+    }
+
+    route_segment {
+        BIGINT route_segment_id PK "identity"
+        BIGINT route_id FK
+        INTEGER segment_sequence "not null, unique with route_id"
+        TEXT encoded_polyline
+        INTEGER distance_m
+        INTEGER duration_seconds
+        VARCHAR congestion_level
+        NUMERIC sensory_score
+        VARCHAR data_availability_status
+    }
+
+    sensor_location {
+        BIGINT sensor_id PK "identity"
+        VARCHAR sensor_name "not null"
+        TEXT description
+        VARCHAR location_name
+        VARCHAR location_type
+        NUMERIC latitude "not null, -90 to 90"
+        NUMERIC longitude "not null, -180 to 180"
+        DATE installation_date
+        VARCHAR status "not null"
+        VARCHAR direction_1
+        VARCHAR direction_2
+        VARCHAR source
+        TIMESTAMPTZ last_updated_at
+    }
+
+    historical_pedestrian_count {
+        BIGINT historical_count_id PK "identity"
+        BIGINT sensor_id FK
+        DATE sensing_date "not null"
+        SMALLINT hour_of_day "not null, 0 to 23"
+        INTEGER direction_1_count "non-negative"
+        INTEGER direction_2_count "non-negative"
+        INTEGER total_count "not null, non-negative"
+        VARCHAR source_record_id
+        VARCHAR data_source "row-level provenance"
+    }
+
+    realtime_pedestrian_count {
+        BIGINT realtime_count_id PK "identity"
+        BIGINT sensor_id FK
+        TIMESTAMPTZ sensed_at "not null"
+        INTEGER direction_1_count "non-negative"
+        INTEGER direction_2_count "non-negative"
+        INTEGER total_count "not null, non-negative"
+        VARCHAR source_record_id
+        VARCHAR data_source "row-level provenance"
+    }
+
+    route_sensor_score {
+        BIGINT route_sensor_score_id PK "identity"
+        BIGINT route_segment_id FK
+        BIGINT sensor_id FK
+        VARCHAR count_source "not null"
+        TIMESTAMPTZ observed_at
+        INTEGER count_used
+        NUMERIC score_contribution "not null"
+    }
+
+    alert {
+        BIGINT alert_id PK "identity"
+        BIGINT route_id FK
+        BIGINT route_segment_id FK "nullable"
+        BIGINT sensor_id FK "nullable"
+        BIGINT prediction_id FK "nullable"
+        VARCHAR deduplication_key
+        VARCHAR alert_type "not null"
+        VARCHAR severity "not null"
+        TEXT message "not null"
+        VARCHAR status "not null"
+        TIMESTAMPTZ created_at "not null"
+        TIMESTAMPTZ updated_at
+        TIMESTAMPTZ expires_at
+        TIMESTAMPTZ acknowledged_at
+    }
+
+    point_of_interest {
+        BIGINT poi_id PK "identity"
+        VARCHAR theme
+        VARCHAR sub_theme
+        VARCHAR feature_name "not null"
+        TEXT address
+        NUMERIC latitude "not null, -90 to 90"
+        NUMERIC longitude "not null, -180 to 180"
+        TEXT coordinates_text
+        TEXT opening_hours
+        BOOLEAN is_sensory_refuge "not null, default false"
+        VARCHAR source
+        VARCHAR source_record_id "unique with source"
+        TEXT accessibility_notes
+        TEXT sensory_notes
+        TIMESTAMPTZ last_updated_at
+    }
+
+    sensory_prediction {
+        BIGINT prediction_id PK "identity"
+        BIGINT sensor_id FK "unique with target and model"
+        TIMESTAMPTZ prediction_for "not null"
+        INTEGER predicted_count
+        VARCHAR severity "not null"
+        VARCHAR confidence "not null"
+        TIMESTAMPTZ generated_at "not null"
+        VARCHAR source_freshness "not null"
+        VARCHAR model_version "not null"
+        VARCHAR data_availability_status "not null"
+        TEXT limitation_message
+        BOOLEAN source_validated "not null"
+    }
+
+    route_refuge_recommendation {
+        BIGINT route_refuge_recommendation_id PK "identity"
+        BIGINT route_id FK "unique with poi_id"
+        BIGINT poi_id FK "unique with route_id"
+        INTEGER recommendation_rank "not null"
+        INTEGER distance_from_route_m
+        VARCHAR availability_status
+        TIMESTAMPTZ created_at "not null"
+    }
+
+    transport_stop {
+        VARCHAR stop_id PK
+        VARCHAR mode "not null"
+        VARCHAR stop_name "not null"
+        NUMERIC latitude "not null, -90 to 90"
+        NUMERIC longitude "not null, -180 to 180"
+    }
+
+    route_transport_stop {
+        BIGINT route_id PK, FK
+        VARCHAR stop_id PK, FK
+        INTEGER stop_sequence PK "not null"
+        VARCHAR stop_role
+        INTEGER distance_m
+    }
+
+    journey_feedback {
+        BIGINT feedback_id PK "identity"
+        BIGINT route_id FK
+        UUID session_id "not null"
+        SMALLINT sensory_rating "not null, 1 to 5"
+        SMALLINT crowd_rating "nullable, 1 to 5 when present"
+        TEXT comments
+        TIMESTAMPTZ submitted_at "not null"
+    }
