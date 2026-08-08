@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 from decimal import Decimal
 
 from datetime import datetime
@@ -22,13 +24,18 @@ class RefugeRepository:
         radius_m: int,
         category_label: str | None = None,
     ) -> list[PointOfInterest]:
-        padding = radius_m / 111_320
+        # longitude degrees get shorter the further you are from the equator,
+        # so they need their own padding or the box ends up too narrow
+        latitude_padding = radius_m / 111_320
+        longitude_scale = max(math.cos(math.radians(latitude)), 0.01)
+        longitude_padding = radius_m / (111_320 * longitude_scale)
+
         statement = select(PointOfInterest).where(
             PointOfInterest.is_sensory_refuge.is_(True),
-            PointOfInterest.latitude >= Decimal(str(latitude - padding)),
-            PointOfInterest.latitude <= Decimal(str(latitude + padding)),
-            PointOfInterest.longitude >= Decimal(str(longitude - padding)),
-            PointOfInterest.longitude <= Decimal(str(longitude + padding)),
+            PointOfInterest.latitude >= Decimal(str(latitude - latitude_padding)),
+            PointOfInterest.latitude <= Decimal(str(latitude + latitude_padding)),
+            PointOfInterest.longitude >= Decimal(str(longitude - longitude_padding)),
+            PointOfInterest.longitude <= Decimal(str(longitude + longitude_padding)),
         )
         if category_label:
             statement = statement.where(PointOfInterest.theme == category_label)
