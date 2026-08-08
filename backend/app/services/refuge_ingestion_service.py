@@ -149,10 +149,7 @@ def validate_refuge(record: dict[str, Any], imported_at: datetime) -> ValidatedR
     if dataset_kind == "landmarks":
         sub_theme = str(record.get("sub_theme") or "").strip()
         name = str(record.get("feature_name") or "").strip()
-        coordinates = record.get("co_ordinates")
-        if not isinstance(coordinates, (list, tuple)) or len(coordinates) < 2:
-            raise ValueError("Missing coordinates")
-        latitude, longitude = float(coordinates[0]), float(coordinates[1])
+        latitude, longitude = _parse_coordinates(record.get("co_ordinates"))
         if "park/garden/reserve" in sub_theme.casefold():
             category = "Park"
         elif "library" in name.casefold():
@@ -210,3 +207,16 @@ def _structured_hours(value: Any) -> str | None:
             return None
         return json.dumps(parsed, sort_keys=True) if isinstance(parsed, dict) else None
     return None
+
+
+def _parse_coordinates(value: Any) -> tuple[float, float]:
+    if isinstance(value, (list, tuple)) and len(value) >= 2:
+        return float(value[0]), float(value[1])
+
+    if isinstance(value, dict):
+        latitude = value.get("lat", value.get("latitude"))
+        longitude = value.get("lon", value.get("lng", value.get("longitude")))
+        if latitude is not None and longitude is not None:
+            return float(latitude), float(longitude)
+
+    raise ValueError("Missing coordinates")
