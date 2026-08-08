@@ -229,6 +229,7 @@ __pycache__/
 *.local
 !.env.example
 backend/.env
+database/aiven-mysql/
 
 # Frontend
 frontend/node_modules/
