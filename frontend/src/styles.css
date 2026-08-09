@@ -23,7 +23,7 @@ input {
 
 .app-shell {
   min-height: 100vh;
-  padding: 20px;
+  padding: 18px 18px 104px;
   background:
     linear-gradient(90deg, rgba(239, 246, 241, 0.92), rgba(241, 246, 244, 0.86)),
     url("https://images.unsplash.com/photo-1545044846-351ba102b6d5?auto=format&fit=crop&w=1800&q=80");
@@ -31,12 +31,118 @@ input {
   background-position: center;
 }
 
+#home,
+#plan,
+#refuges,
+#settings {
+  scroll-margin-top: 18px;
+}
+
+.bottom-navigation {
+  position: fixed;
+  z-index: 1100;
+  right: 50%;
+  bottom: 18px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(92px, 132px));
+  gap: 4px;
+  width: max-content;
+  padding: 6px;
+  background: rgba(250, 252, 251, 0.97);
+  border: 1px solid rgba(50, 71, 62, 0.2);
+  border-radius: 8px;
+  box-shadow: 0 16px 44px rgba(28, 47, 40, 0.24);
+  transform: translateX(50%);
+  backdrop-filter: blur(12px);
+}
+
+.bottom-navigation button {
+  display: grid;
+  grid-template-columns: 22px auto;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 48px;
+  padding: 8px 12px;
+  color: #52685f;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.bottom-navigation button:hover {
+  color: #1d5f56;
+  background: #eef5f1;
+}
+
+.bottom-navigation button.active {
+  color: #f8fbfa;
+  background: #256f64;
+}
+
+.bottom-navigation span {
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.app-topbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  max-width: 1440px;
+  margin: 0 auto 14px;
+  padding: 14px 18px;
+  background: rgba(250, 252, 251, 0.92);
+  border: 1px solid rgba(50, 71, 62, 0.16);
+  border-radius: 8px;
+  box-shadow: 0 14px 40px rgba(35, 50, 43, 0.14);
+}
+
+.app-topbar h1 {
+  font-size: 2.1rem;
+}
+
+.app-topbar__copy {
+  max-width: 56ch;
+  margin-bottom: 0;
+  color: #52685f;
+  line-height: 1.45;
+}
+
+.app-topbar__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.app-topbar__stats div {
+  min-width: 110px;
+  padding: 10px 12px;
+  background: #f0f5f2;
+  border-radius: 8px;
+}
+
+.app-topbar__stats span {
+  display: block;
+  color: #61756d;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.app-topbar__stats strong {
+  color: #1f332d;
+  font-size: 1rem;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(300px, 380px) minmax(360px, 1fr) minmax(320px, 420px);
   gap: 14px;
   max-width: 1440px;
-  min-height: calc(100vh - 40px);
+  min-height: calc(100vh - 120px);
   margin: 0 auto;
 }
 
@@ -54,6 +160,11 @@ input {
   padding: 22px;
 }
 
+.planner-panel h2 {
+  margin-bottom: 0;
+  font-size: 1.05rem;
+}
+
 .brand-row,
 .map-header,
 .results-header {
@@ -65,7 +176,7 @@ input {
 
 .brand-row {
   justify-content: flex-start;
-  margin-bottom: 28px;
+  margin-bottom: 22px;
 }
 
 .brand-mark,
@@ -424,7 +535,7 @@ dd {
   border-radius: 8px;
 }
 
-.route-list {
+.navigation-panel {
   display: grid;
   gap: 12px;
 }
@@ -453,6 +564,12 @@ dd {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.route-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .route-card h3,
@@ -489,6 +606,20 @@ dd {
   background: #9f2d2d;
 }
 
+.route-source-pill {
+  display: inline-flex;
+  align-items: center;
+  min-width: 76px;
+  padding: 6px 8px;
+  color: #41544b;
+  background: #edf3ef;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .route-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -520,11 +651,92 @@ dd {
   font-weight: 800;
 }
 
+.route-steps {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #f6faf8;
+  border: 1px solid #d9e6e1;
+  border-radius: 8px;
+}
+
+.route-steps h4 {
+  margin: 0;
+  color: #365047;
+  font-size: 0.8rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.route-steps ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.route-steps li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #243732;
+  font-size: 0.84rem;
+}
+
+.route-steps strong {
+  flex: 0 0 auto;
+  color: #47655c;
+  font-size: 0.78rem;
+}
+
+.route-steps-more {
+  margin: 0;
+  color: #61756d;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-align: right;
+}
+
 .route-card-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.navigation-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.navigation-stats span {
+  padding: 8px;
+  color: #31443d;
+  background: #edf4f0;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-align: center;
+  text-transform: capitalize;
+}
+
+.navigation-route-meta {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  background: #f6faf8;
+  border: 1px solid #d9e6e1;
+  border-radius: 8px;
+}
+
+.navigation-route-meta div {
+  display: grid;
+  gap: 4px;
+}
+
+.navigation-route-meta dd {
+  font-size: 0.92rem;
 }
 
 .select-route-button {
@@ -629,6 +841,11 @@ dd {
 }
 
 @media (max-width: 1120px) {
+  .app-topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .workspace {
     grid-template-columns: 360px minmax(360px, 1fr);
   }
@@ -640,7 +857,16 @@ dd {
 
 @media (max-width: 760px) {
   .app-shell {
-    padding: 10px;
+    padding: 10px 10px 94px;
+  }
+
+  .app-topbar {
+    padding: 14px;
+  }
+
+  .app-topbar__stats {
+    grid-template-columns: 1fr;
+    width: 100%;
   }
 
   .workspace {
@@ -670,5 +896,27 @@ dd {
 
   .route-stats {
     grid-template-columns: 1fr;
+  }
+
+  .bottom-navigation {
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    grid-template-columns: repeat(4, 1fr);
+    width: auto;
+    padding: 5px;
+    transform: none;
+  }
+
+  .bottom-navigation button {
+    grid-template-columns: 1fr;
+    gap: 3px;
+    min-width: 0;
+    min-height: 58px;
+    padding: 6px 3px;
+  }
+
+  .bottom-navigation span {
+    font-size: 0.7rem;
   }
 }

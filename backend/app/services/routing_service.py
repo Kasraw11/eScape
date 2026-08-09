@@ -3,19 +3,24 @@ from math import asin, cos, radians, sin, sqrt
 from app.core.crowd import CrowdLevel, classify_crowd_count
 from app.core.validation import Coordinate
 from app.schemas.crowd import PedestrianCount, SensorLocation
-from app.schemas.routes import RouteOption, RoutePlanRequest, RoutePlanResponse, RouteSegment
+from app.schemas.routes import RouteOption, RoutePlanRequest, RoutePlanResponse, RouteSegment, RouteStep
 
 
 KNOWN_PLACES = {
     "flinders street station": Coordinate(latitude=-37.8183, longitude=144.9671),
+    "flinders street": Coordinate(latitude=-37.8183, longitude=144.9671),
     "state library victoria": Coordinate(latitude=-37.8098, longitude=144.9652),
+    "state library": Coordinate(latitude=-37.8098, longitude=144.9652),
     "melbourne central": Coordinate(latitude=-37.8109, longitude=144.9629),
+    "melbourne central station": Coordinate(latitude=-37.8109, longitude=144.9629),
     "southern cross station": Coordinate(latitude=-37.8183, longitude=144.9525),
+    "southern cross": Coordinate(latitude=-37.8183, longitude=144.9525),
     "queen victoria market": Coordinate(latitude=-37.8076, longitude=144.9568),
     "fed square": Coordinate(latitude=-37.8179, longitude=144.9691),
     "federation square": Coordinate(latitude=-37.8179, longitude=144.9691),
     "rmit university": Coordinate(latitude=-37.8083, longitude=144.9638),
     "melbourne town hall": Coordinate(latitude=-37.8150, longitude=144.9666),
+    "town hall": Coordinate(latitude=-37.8150, longitude=144.9666),
     "city library": Coordinate(latitude=-37.8170, longitude=144.9658),
 }
 
@@ -163,6 +168,7 @@ def build_route_option(
         recommendation_reason=reason,
         is_recommended=False,
         segments=waypoints_to_segments(waypoints, crowd_level),
+        steps=segments_to_steps(waypoints_to_segments(waypoints, crowd_level)),
     )
 
 
@@ -214,6 +220,68 @@ def waypoints_to_segments(waypoints: list[Coordinate], crowd_level: CrowdLevel) 
         RouteSegment(start=start, end=end, sensory_level=crowd_level)
         for start, end in zip(waypoints, waypoints[1:])
     ]
+
+
+def segments_to_steps(segments: list[RouteSegment]) -> list[RouteStep]:
+    if not segments:
+        return []
+
+    steps: list[RouteStep] = []
+    current_direction: str | None = None
+    current_distance = 0.0
+
+    for index, segment in enumerate(segments):
+        direction = infer_direction(segment.start, segment.end)
+        distance = haversine_m(segment.start, segment.end)
+        is_final = index == len(segments) - 1
+
+        if current_direction is None:
+            current_direction = direction
+            current_distance = distance
+            continue
+
+        if direction == current_direction and len(steps) < 4:
+            current_distance += distance
+            continue
+
+        steps.append(
+            RouteStep(
+                instruction=describe_direction(current_direction, index == len(segments)),
+                distance_m=round(current_distance),
+            )
+        )
+        current_direction = direction
+        current_distance = distance
+
+        if is_final:
+            break
+
+    if current_direction is not None:
+        steps.append(
+            RouteStep(
+                instruction=describe_direction(current_direction, True),
+                distance_m=round(current_distance),
+            )
+        )
+
+    return steps[:5]
+
+
+def infer_direction(start: Coordinate, end: Coordinate) -> str:
+    lat_delta = end.latitude - start.latitude
+    lng_delta = end.longitude - start.longitude
+
+    if abs(lat_delta) >= abs(lng_delta):
+        return "north" if lat_delta > 0 else "south"
+
+    return "east" if lng_delta > 0 else "west"
+
+
+def describe_direction(direction: str, is_final: bool) -> str:
+    if is_final:
+        return f"Continue {direction} to your destination"
+
+    return f"Walk {direction} along the route"
 
 
 def apply_live_crowd_scoring(

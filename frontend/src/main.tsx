@@ -3,10 +3,13 @@ import ReactDOM from "react-dom/client";
 import {
   AlertTriangle,
   CheckCircle2,
+  House,
+  Leaf,
   Loader2,
   Navigation,
   RefreshCw,
   Route,
+  Settings2,
   ShieldCheck,
 } from "lucide-react";
 import axios from "axios";
@@ -103,6 +106,12 @@ type RouteOption = {
   recommendation_reason: string;
   is_recommended: boolean;
   segments: RouteSegment[];
+  steps: RouteStep[];
+};
+
+type RouteStep = {
+  instruction: string;
+  distance_m: number;
 };
 
 const api = axios.create({
@@ -117,6 +126,7 @@ const thresholdCopy: Record<CrowdThreshold, string> = {
 };
 
 function App() {
+  const [activeNavigation, setActiveNavigation] = React.useState<"home" | "plan" | "refuges" | "settings">("home");
   const [origin, setOrigin] = React.useState("Flinders Street Station");
   const [destination, setDestination] = React.useState("State Library Victoria");
   const [threshold, setThreshold] = React.useState<CrowdThreshold>("medium");
@@ -136,6 +146,7 @@ function App() {
   const selectedRoute =
     routeResult?.routes.find((route) => route.route_id === selectedRouteId) ?? recommendedRoute ?? null;
   const hasRealRouteGeometry = routeResult?.route_geometry_source === "openrouteservice" || routeResult?.route_geometry_source === "osrm";
+  const routeSourceLabel = routeGeometryLabel(routeResult?.route_geometry_source);
   const coverageLabel =
     activeSensors.length > 70 ? "strong" : activeSensors.length > 25 ? "partial" : "limited";
 
@@ -211,17 +222,45 @@ function App() {
     }
   }
 
+  function navigateTo(section: "home" | "plan" | "refuges" | "settings") {
+    setActiveNavigation(section);
+    document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   return (
-    <main className="app-shell">
+    <main className="app-shell" id="home">
+      <header className="app-topbar">
+        <div>
+          <p className="eyebrow">Melbourne CBD navigation</p>
+          <h1>eScape</h1>
+          <p className="app-topbar__copy">Plan calmer walking routes with live crowd context, route guidance, and refuge stops.</p>
+        </div>
+
+        <div className="app-topbar__stats" aria-label="Trip status">
+          <div>
+            <span>Sensor coverage</span>
+            <strong>{coverageLabel}</strong>
+          </div>
+          <div>
+            <span>Live counts</span>
+            <strong>{crowdStatus === "ready" ? `${liveCrowd?.count ?? 0}` : "--"}</strong>
+          </div>
+          <div>
+            <span>Route state</span>
+            <strong>{routeStatus === "ready" && selectedRoute ? "Ready" : "Idle"}</strong>
+          </div>
+        </div>
+      </header>
+
       <section className="workspace">
-        <aside className="planner-panel" aria-label="Journey planner">
+        <aside className="planner-panel" id="plan" aria-label="Journey planner">
           <div className="brand-row">
             <div className="brand-mark">
               <Navigation size={22} aria-hidden="true" />
             </div>
             <div>
-              <p className="eyebrow">Melbourne CBD</p>
-              <h1>eScape</h1>
+              <p className="eyebrow">Journey planner</p>
+              <h2>Route controls</h2>
             </div>
           </div>
 
@@ -240,7 +279,7 @@ function App() {
               />
             </label>
 
-            <fieldset>
+            <fieldset id="settings">
               <legend>Maximum crowd level I am comfortable with</legend>
               <div className="segmented-control">
                 {(["low", "medium", "high"] as CrowdThreshold[]).map((level) => (
@@ -327,10 +366,10 @@ function App() {
         </section>
 
         <section className="results-panel" aria-label="Route results">
-          <div className="results-header">
-            <p className="eyebrow">Route Assessment</p>
-            <h2>Journey Readiness</h2>
-          </div>
+            <div className="results-header">
+              <p className="eyebrow">Route Assessment</p>
+              <h2>Journey Readiness</h2>
+            </div>
 
           {routeResult ? (
             <div className="result-state success">
@@ -373,43 +412,63 @@ function App() {
 
           {errorMessage ? <p className="error-message">{errorMessage}</p> : null}
 
-          {routeResult?.routes.length ? (
-            <div className="route-list">
-              {routeResult.routes.map((route) => (
-                <article
-                  className={`route-card ${route.is_recommended ? "recommended" : ""} ${
-                    selectedRoute?.route_id === route.route_id ? "selected" : ""
-                  }`}
-                  key={route.route_id}
-                >
-                  <div className="route-card-header">
-                    <div>
-                      <h3>{route.title}</h3>
-                      <p>{route.summary}</p>
-                    </div>
-                    <span className={`level-pill ${route.sensory_level}`}>{route.sensory_level}</span>
-                  </div>
-                  <div className="route-stats">
-                    <span>{formatDistance(route.distance_m)}</span>
-                    <span>{route.estimated_duration_min} min</span>
-                    <span>{route.matched_sensor_count} sensors</span>
-                  </div>
-                  <div className="route-stats secondary">
-                    <span>max {route.max_pedestrian_count ?? "--"}</span>
-                    <span>avg {route.average_pedestrian_count ?? "--"}</span>
-                    <span>{route.sensor_coverage} coverage</span>
-                  </div>
-                  <p className="route-reason">{route.recommendation_reason}</p>
-                  <p className="route-source">{route.data_source}</p>
-                  <div className="route-card-actions">
-                    {route.is_recommended ? <strong className="recommended-label">Recommended</strong> : <span />}
-                    <button className="select-route-button" type="button" onClick={() => setSelectedRouteId(route.route_id)}>
-                      Show on map
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
+          {selectedRoute ? (
+            <article className={`route-card selected ${selectedRoute.is_recommended ? "recommended" : ""}`}>
+              <div className="route-card-header">
+                <div>
+                  <p className="eyebrow">Active route</p>
+                  <h3>{selectedRoute.title}</h3>
+                  <p>{selectedRoute.summary}</p>
+                </div>
+                <div className="route-card-badges">
+                  <span className="route-source-pill">{routeSourceLabel}</span>
+                  <span className={`level-pill ${selectedRoute.sensory_level}`}>{selectedRoute.sensory_level}</span>
+                </div>
+              </div>
+              <div className="navigation-stats">
+                <span>{formatDistance(selectedRoute.distance_m)}</span>
+                <span>{selectedRoute.estimated_duration_min} min</span>
+                <span>{selectedRoute.matched_sensor_count} sensors</span>
+                <span>{selectedRoute.sensor_coverage} coverage</span>
+              </div>
+              <p className="route-reason">{selectedRoute.recommendation_reason}</p>
+              <div className="navigation-route-meta">
+                <div>
+                  <dt>Start</dt>
+                  <dd>{origin}</dd>
+                </div>
+                <div>
+                  <dt>Destination</dt>
+                  <dd>{destination}</dd>
+                </div>
+                <div>
+                  <dt>Data source</dt>
+                  <dd>{selectedRoute.data_source}</dd>
+                </div>
+              </div>
+              {selectedRoute.steps.length ? (
+                <div className="route-steps">
+                  <h4>Walking instructions</h4>
+                  <ol>
+                    {selectedRoute.steps.slice(0, 5).map((step, index) => (
+                      <li key={`${selectedRoute.route_id}-${index}`}>
+                        <span>{step.instruction}</span>
+                        <strong>{formatDistance(step.distance_m)}</strong>
+                      </li>
+                    ))}
+                  </ol>
+                  {selectedRoute.steps.length > 5 ? (
+                    <p className="route-steps-more">+{selectedRoute.steps.length - 5} more steps</p>
+                  ) : null}
+                </div>
+              ) : null}
+              <div className="route-card-actions">
+                {selectedRoute.is_recommended ? <strong className="recommended-label">Recommended</strong> : <span />}
+                <button className="select-route-button" type="button" onClick={() => setSelectedRouteId(selectedRoute.route_id)}>
+                  Show on map
+                </button>
+              </div>
+            </article>
           ) : null}
 
           {routeResult?.limitations.length ? (
@@ -423,53 +482,105 @@ function App() {
             </div>
           ) : null}
 
-          <div className="refuge-panel">
-            <div className="results-header">
-              <div>
-                <p className="eyebrow">Sensory Refuges</p>
-                <h2>Nearby Quiet Stops</h2>
-              </div>
-            </div>
-            {refugeStatus === "idle" ? (
-              <p className="data-note">Plan a journey to search for refuge candidates near the destination.</p>
-            ) : refugeStatus === "loading" ? (
-              <p className="data-note">Loading nearby refuge candidates.</p>
-            ) : refugeStatus === "error" ? (
-              <p className="error-message">Refuge candidates could not be loaded right now.</p>
-            ) : refuges?.refuges.length ? (
-              <>
-                <div className="refuge-list">
-                  {refuges.refuges.map((refuge) => (
-                    <article className="refuge-card" key={`${refuge.name}-${refuge.latitude}-${refuge.longitude}`}>
-                      <div>
-                        <h3>{refuge.name}</h3>
-                        <p>{refuge.sub_theme ?? refuge.theme ?? "Point of interest"}</p>
-                      </div>
-                      <strong>{refuge.distance_m !== null ? formatDistance(refuge.distance_m) : "nearby"}</strong>
-                    </article>
-                  ))}
+          {activeNavigation === "refuges" ? (
+            <div className="refuge-panel" id="refuges">
+              <div className="results-header">
+                <div>
+                  <p className="eyebrow">Sensory Refuges</p>
+                  <h2>Nearby Quiet Stops</h2>
                 </div>
-                <p className="data-note">{refuges.data_note}</p>
-              </>
-            ) : (
-              <p className="data-note">No refuge candidates were returned near this destination.</p>
-            )}
-          </div>
-
-          <div className="next-steps">
-            <h3>Current MVP status</h3>
-            <ul>
-              <li>Sensor locations load from City of Melbourne Open Data.</li>
-              <li>Journey inputs return deterministic MVP route options.</li>
-              <li>Nearby refuge candidates load from City landmarks/POIs.</li>
-              <li>The map is interactive, but route geometry is deterministic until a routing API is connected.</li>
-              <li>Route sensory levels are explainable assumptions until live per-segment scoring is connected.</li>
-            </ul>
-          </div>
+              </div>
+              {refugeStatus === "idle" ? (
+                <p className="data-note">Plan a journey to search for refuge candidates near the destination.</p>
+              ) : refugeStatus === "loading" ? (
+                <p className="data-note">Loading nearby refuge candidates.</p>
+              ) : refugeStatus === "error" ? (
+                <p className="error-message">Refuge candidates could not be loaded right now.</p>
+              ) : refuges?.refuges.length ? (
+                <>
+                  <div className="refuge-list">
+                    {refuges.refuges.map((refuge) => (
+                      <article className="refuge-card" key={`${refuge.name}-${refuge.latitude}-${refuge.longitude}`}>
+                        <div>
+                          <h3>{refuge.name}</h3>
+                          <p>{refuge.sub_theme ?? refuge.theme ?? "Point of interest"}</p>
+                        </div>
+                        <strong>{refuge.distance_m !== null ? formatDistance(refuge.distance_m) : "nearby"}</strong>
+                      </article>
+                    ))}
+                  </div>
+                  <p className="data-note">{refuges.data_note}</p>
+                </>
+              ) : (
+                <p className="data-note">No refuge candidates were returned near this destination.</p>
+              )}
+            </div>
+          ) : (
+            <div className="next-steps">
+              <h3>Current Navigation Stack</h3>
+              <ul>
+                <li>Live sensor coverage comes from City of Melbourne Open Data.</li>
+                <li>Real walking geometry comes from openrouteservice first, then OSRM as backup.</li>
+                <li>The screen centers on one active route with supporting map and crowd data.</li>
+                <li>Walking steps are condensed from the route geometry for quicker scanning.</li>
+              </ul>
+            </div>
+          )}
         </section>
       </section>
+
+      <nav className="bottom-navigation" aria-label="Primary navigation">
+        <button
+          className={activeNavigation === "home" ? "active" : ""}
+          type="button"
+          onClick={() => navigateTo("home")}
+          aria-current={activeNavigation === "home" ? "page" : undefined}
+        >
+          <House size={20} aria-hidden="true" />
+          <span>Home</span>
+        </button>
+        <button
+          className={activeNavigation === "plan" ? "active" : ""}
+          type="button"
+          onClick={() => navigateTo("plan")}
+          aria-current={activeNavigation === "plan" ? "page" : undefined}
+        >
+          <Route size={20} aria-hidden="true" />
+          <span>Plan</span>
+        </button>
+        <button
+          className={activeNavigation === "refuges" ? "active" : ""}
+          type="button"
+          onClick={() => navigateTo("refuges")}
+          aria-current={activeNavigation === "refuges" ? "page" : undefined}
+        >
+          <Leaf size={20} aria-hidden="true" />
+          <span>Refuges</span>
+        </button>
+        <button
+          className={activeNavigation === "settings" ? "active" : ""}
+          type="button"
+          onClick={() => navigateTo("settings")}
+          aria-current={activeNavigation === "settings" ? "page" : undefined}
+        >
+          <Settings2 size={20} aria-hidden="true" />
+          <span>Settings</span>
+        </button>
+      </nav>
     </main>
   );
+}
+
+function routeGeometryLabel(source?: string) {
+  if (source === "openrouteservice") {
+    return "ORS route";
+  }
+
+  if (source === "osrm") {
+    return "OSRM route";
+  }
+
+  return "Demo route";
 }
 
 function formatDistance(distanceM: number) {

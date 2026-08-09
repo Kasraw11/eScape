@@ -5,8 +5,8 @@ import httpx
 from app.core.config import get_settings
 from app.core.crowd import CrowdLevel
 from app.core.validation import Coordinate
-from app.schemas.routes import RouteOption, RoutePlanRequest, RouteSegment
-from app.services.routing_service import resolve_place, threshold_rank
+from app.schemas.routes import RouteOption, RoutePlanRequest, RouteSegment, RouteStep
+from app.services.routing_service import haversine_m, resolve_place, threshold_rank
 
 
 class OpenRouteServiceClient:
@@ -53,7 +53,7 @@ class OpenRouteServiceClient:
             )
             response.raise_for_status()
 
-        return parse_openrouteservice_routes(response.json())
+        return parse_openrouteservice_routes(response.json(), destination)
 
 
 class OsmRouteServiceClient:
@@ -79,7 +79,7 @@ class OsmRouteServiceClient:
             )
             response.raise_for_status()
 
-        return parse_osrm_routes(response.json())
+        return parse_osrm_routes(response.json(), destination)
 
 
 def get_openrouteservice_client() -> OpenRouteServiceClient:
@@ -99,7 +99,10 @@ def get_osm_route_client() -> OsmRouteServiceClient:
     )
 
 
-def parse_openrouteservice_routes(payload: dict[str, Any]) -> list[RouteOption]:
+def parse_openrouteservice_routes(
+    payload: dict[str, Any],
+    destination: Coordinate | None = None,
+) -> list[RouteOption]:
     features = payload.get("features")
     if not isinstance(features, list):
         return []
@@ -128,6 +131,8 @@ def parse_openrouteservice_routes(payload: dict[str, Any]) -> list[RouteOption]:
             continue
 
         positions = extract_positions(coordinates)
+        if destination is not None:
+            positions = trim_route_positions(positions, destination)
         if len(positions) < 2:
             continue
 
@@ -152,13 +157,14 @@ def parse_openrouteservice_routes(payload: dict[str, Any]) -> list[RouteOption]:
                 recommendation_reason="Route geometry comes from openrouteservice; sensory score is applied after sensor matching.",
                 is_recommended=False,
                 segments=positions_to_segments(positions),
+                steps=positions_to_steps(positions),
             )
         )
 
     return route_options
 
 
-def parse_osrm_routes(payload: dict[str, Any]) -> list[RouteOption]:
+def parse_osrm_routes(payload: dict[str, Any], destination: Coordinate | None = None) -> list[RouteOption]:
     routes = payload.get("routes")
     if not isinstance(routes, list):
         return []
@@ -182,6 +188,8 @@ def parse_osrm_routes(payload: dict[str, Any]) -> list[RouteOption]:
             continue
 
         positions = extract_positions(coordinates)
+        if destination is not None:
+            positions = trim_route_positions(positions, destination)
         if len(positions) < 2:
             continue
 
@@ -205,6 +213,7 @@ def parse_osrm_routes(payload: dict[str, Any]) -> list[RouteOption]:
                 recommendation_reason="Route geometry comes from OSRM; sensory score is applied after sensor matching.",
                 is_recommended=False,
                 segments=positions_to_segments(positions),
+                steps=positions_to_steps(positions),
             )
         )
 
@@ -224,8 +233,53 @@ def extract_positions(coordinates: list[Any]) -> list[Coordinate]:
     return positions
 
 
+def trim_route_positions(positions: list[Coordinate], destination: Coordinate) -> list[Coordinate]:
+    if len(positions) < 4:
+        return positions
+
+    destination_index = min(
+        range(len(positions)),
+        key=lambda index: haversine_m(positions[index], destination),
+    )
+
+    if destination_index >= len(positions) - 2:
+        return positions
+
+    trimmed = positions[: destination_index + 2]
+    if haversine_m(trimmed[-1], destination) > 120:
+        trimmed[-1] = destination
+
+    return trimmed
+
+
 def positions_to_segments(positions: list[Coordinate]) -> list[RouteSegment]:
     return [
         RouteSegment(start=start, end=end, sensory_level=CrowdLevel.MEDIUM)
         for start, end in zip(positions, positions[1:])
     ]
+
+
+def positions_to_steps(positions: list[Coordinate]) -> list[RouteStep]:
+    segments = positions_to_segments(positions)
+    return [
+        RouteStep(
+            instruction=describe_step(segment.start, segment.end, index == len(segments) - 1),
+            distance_m=round(haversine_m(segment.start, segment.end)),
+        )
+        for index, segment in enumerate(segments)
+    ]
+
+
+def describe_step(start: Coordinate, end: Coordinate, is_final: bool) -> str:
+    lat_delta = end.latitude - start.latitude
+    lng_delta = end.longitude - start.longitude
+
+    if abs(lat_delta) >= abs(lng_delta):
+        direction = "north" if lat_delta > 0 else "south"
+    else:
+        direction = "east" if lng_delta > 0 else "west"
+
+    if is_final:
+        return f"Continue {direction} to your destination"
+
+    return f"Walk {direction} along the route"

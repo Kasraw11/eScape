@@ -19,6 +19,11 @@ class RouteSegment(BaseModel):
     sensory_level: CrowdLevel
 
 
+class RouteStep(BaseModel):
+    instruction: str
+    distance_m: int
+
+
 class RouteOption(BaseModel):
     route_id: str
     title: str
@@ -37,6 +42,7 @@ class RouteOption(BaseModel):
     recommendation_reason: str
     is_recommended: bool
     segments: list[RouteSegment]
+    steps: list[RouteStep] = []
 
 
 class RoutePlanResponse(BaseModel):
