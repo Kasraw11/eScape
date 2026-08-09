@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from decimal import Decimal
 from typing import Any
 
 import httpx
@@ -42,29 +43,70 @@ class ValidatedPedestrianReading:
 
 
 class MelbournePedestrianClient:
-    async def fetch_latest(self, client: httpx.AsyncClient | None = None) -> list[dict[str, Any]]:
+    async def fetch_sensor_locations(
+        self,
+        client: httpx.AsyncClient | None = None,
+    ) -> list[dict[str, Any]]:
         owns_client = client is None
         http_client = client or httpx.AsyncClient(timeout=settings.melbourne_pedestrian_api_timeout_seconds)
+        records: list[dict[str, Any]] = []
+        offset = 0
         try:
-            response = await http_client.get(
-                settings.melbourne_pedestrian_api_url,
-                params={
-                    "order_by": "sensing_datetime desc",
-                    "limit": settings.melbourne_pedestrian_api_limit,
-                    "timezone": "UTC",
-                },
-            )
-            response.raise_for_status()
-            payload = response.json()
+            while True:
+                response = await http_client.get(
+                    settings.melbourne_sensor_locations_api_url,
+                    params={"limit": 100, "offset": offset},
+                )
+                response.raise_for_status()
+                payload = response.json()
+                page = payload.get("results") if isinstance(payload, dict) else None
+                if not isinstance(page, list):
+                    raise MelbournePedestrianDataError("Melbourne sensor-location response was invalid")
+                records.extend(record for record in page if isinstance(record, dict))
+                if len(page) < 100:
+                    return records
+                offset += 100
+        except (httpx.HTTPError, ValueError, TypeError) as exc:
+            raise MelbournePedestrianDataError("Melbourne sensor-location request failed") from exc
+        finally:
+            if owns_client:
+                await http_client.aclose()
+
+    async def fetch_latest(
+        self,
+        client: httpx.AsyncClient | None = None,
+        max_records: int = 1000,
+    ) -> list[dict[str, Any]]:
+        owns_client = client is None
+        http_client = client or httpx.AsyncClient(timeout=settings.melbourne_pedestrian_api_timeout_seconds)
+        records: list[dict[str, Any]] = []
+        offset = 0
+        page_size = min(settings.melbourne_pedestrian_api_limit, 100)
+        try:
+            while offset < max_records:
+                response = await http_client.get(
+                    settings.melbourne_pedestrian_api_url,
+                    params={
+                        "order_by": "sensing_datetime desc",
+                        "limit": page_size,
+                        "offset": offset,
+                        "timezone": "UTC",
+                    },
+                )
+                response.raise_for_status()
+                payload = response.json()
+                page = payload.get("results") if isinstance(payload, dict) else None
+                if not isinstance(page, list):
+                    raise MelbournePedestrianDataError("Melbourne pedestrian data response was invalid")
+                records.extend(record for record in page if isinstance(record, dict))
+                if len(page) < page_size:
+                    break
+                offset += page_size
         except (httpx.HTTPError, ValueError, TypeError) as exc:
             raise MelbournePedestrianDataError("Melbourne pedestrian data request failed") from exc
         finally:
             if owns_client:
                 await http_client.aclose()
-
-        records = payload.get("results") if isinstance(payload, dict) else None
-        if not isinstance(records, list):
-            raise MelbournePedestrianDataError("Melbourne pedestrian data response was invalid")
         return records
 
 
@@ -134,6 +176,60 @@ class PedestrianIngestionService:
                 stats.skipped += 1
 
         return stats
+
+    def ingest_sensor_locations(self, raw_records: list[dict[str, Any]]) -> IngestionStats:
+        stats = IngestionStats()
+        for record in raw_records:
+            try:
+                values = validate_sensor_location(record)
+            except (KeyError, TypeError, ValueError):
+                stats.invalid += 1
+                continue
+
+            sensor = self.db.get(SensorLocation, values["sensor_id"])
+            if sensor is None:
+                self.db.add(SensorLocation(**values))
+                stats.inserted += 1
+                continue
+
+            changed = False
+            for field, value in values.items():
+                if field != "sensor_id" and getattr(sensor, field) != value:
+                    setattr(sensor, field, value)
+                    changed = True
+            if changed:
+                stats.updated += 1
+            else:
+                stats.skipped += 1
+        return stats
+
+
+def validate_sensor_location(record: dict[str, Any]) -> dict[str, Any]:
+    sensor_id = int(record["location_id"])
+    latitude = Decimal(str(record["latitude"]))
+    longitude = Decimal(str(record["longitude"]))
+    if not Decimal("-90") <= latitude <= Decimal("90"):
+        raise ValueError("Latitude out of range")
+    if not Decimal("-180") <= longitude <= Decimal("180"):
+        raise ValueError("Longitude out of range")
+
+    installation_date = record.get("installation_date")
+    parsed_date = date.fromisoformat(str(installation_date)[:10]) if installation_date else None
+    return {
+        "sensor_id": sensor_id,
+        "sensor_name": str(record.get("sensor_name") or record.get("sensor_description") or f"Sensor {sensor_id}"),
+        "description": record.get("sensor_description"),
+        "location_name": record.get("sensor_name"),
+        "location_type": record.get("location_type"),
+        "latitude": latitude,
+        "longitude": longitude,
+        "installation_date": parsed_date,
+        "status": str(record.get("status") or "unknown"),
+        "direction_1": record.get("direction_1"),
+        "direction_2": record.get("direction_2"),
+        "source": "City of Melbourne Open Data",
+        "last_updated_at": None,
+    }
 
 
 def validate_reading(record: dict[str, Any]) -> ValidatedPedestrianReading:

@@ -48,7 +48,7 @@ export default function ExpandedMapModal({
 
     document.body.style.overflow = "hidden";
 
-    setTimeout(() => {
+    globalThis.setTimeout(() => {
       closeButtonRef.current?.focus();
     }, 0);
 

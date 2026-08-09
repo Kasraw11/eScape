@@ -154,6 +154,9 @@ def upsert_sensor(db: Session, row: dict[str, Any], stats: ImportStats) -> Senso
     if sensor is None:
         sensor = SensorLocation(sensor_id=row["sensor_id"], **sensor_values)
         db.add(sensor)
+        # Make the new identity visible to db.get() when later CSV rows
+        # contain additional counts for the same sensor.
+        db.flush()
         stats.sensors_inserted += 1
         return sensor
 

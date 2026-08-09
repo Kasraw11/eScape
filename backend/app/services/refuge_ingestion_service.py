@@ -150,12 +150,16 @@ def validate_refuge(record: dict[str, Any], imported_at: datetime) -> ValidatedR
         sub_theme = str(record.get("sub_theme") or "").strip()
         name = str(record.get("feature_name") or "").strip()
         coordinates = record.get("co_ordinates")
-        if not isinstance(coordinates, (list, tuple)) or len(coordinates) < 2:
+        if isinstance(coordinates, dict):
+            latitude = float(coordinates["lat"])
+            longitude = float(coordinates["lon"])
+        elif isinstance(coordinates, (list, tuple)) and len(coordinates) >= 2:
+            latitude, longitude = float(coordinates[0]), float(coordinates[1])
+        else:
             raise ValueError("Missing coordinates")
-        latitude, longitude = float(coordinates[0]), float(coordinates[1])
         if "park/garden/reserve" in sub_theme.casefold():
             category = "Park"
-        elif "library" in name.casefold():
+        elif "library" in name.casefold() or "library" in sub_theme.casefold():
             category = "Library"
         else:
             return None

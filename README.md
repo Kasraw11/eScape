@@ -40,6 +40,24 @@ alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
+## Local OSRM routing
+
+The backend now expects a local OSRM server at `http://127.0.0.1:5000` when you want street-following walking routes. The repo does not ship with an OpenStreetMap extract, so you need to place a Melbourne CBD `.osm.pbf` file in `routing-data/melbourne.osm.pbf` first.
+
+After that, start the routing container from the repo root:
+
+```powershell
+docker compose up osrm
+```
+
+Then set the backend environment variable if needed:
+
+```env
+OSRM_BASE_URL=http://127.0.0.1:5000
+```
+
+If OSRM is not running, the backend falls back to deterministic placeholder routes so the app remains testable, but those routes will not follow the streets accurately.
+
 ## Frontend
 
 ```powershell

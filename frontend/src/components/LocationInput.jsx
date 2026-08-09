@@ -90,7 +90,7 @@ const LocationInput = forwardRef(function LocationInput(
       setSuggestions([]);
       setOpen(false);
 
-      const params = new URLSearchParams({
+      const params = new globalThis.URLSearchParams({
         q: `${query}, Melbourne, Victoria, Australia`,
         format: "jsonv2",
         addressdetails: "1",
@@ -173,7 +173,7 @@ const LocationInput = forwardRef(function LocationInput(
       setSearching(true);
       setNotice("Finding location...");
 
-      const params = new URLSearchParams({
+      const params = new globalThis.URLSearchParams({
         q: `${query}, Melbourne, Victoria, Australia`,
         format: "jsonv2",
         addressdetails: "1",

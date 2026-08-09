@@ -20,6 +20,7 @@ from app.models.route_sensor_score import RouteSensorScore
 from app.repositories.pedestrian_repository import PedestrianRepository
 
 from app.schemas.route_planning import (
+    MatchedSensorResponse,
     RouteOptionResponse,
     RoutePlanResponse,
     RoutePlanningRequest,
@@ -92,6 +93,13 @@ class RouteBuildResult:
 
     response: RouteOptionResponse
     sensor_scores: list[SegmentSensorScorePersistence]
+
+
+FALLBACK_ROUTE_DELTAS = (
+    (0.0, 0.0, "Direct walking route"),
+    (0.0012, -0.0009, "Calmer walking route"),
+    (-0.0010, 0.0011, "Alternative walking route"),
+)
 
 
 # ---------------------------------------------------------------------------
@@ -233,10 +241,11 @@ async def plan_route(
             exc,
         )
 
-        raise HTTPException(
-            status_code=502,
-            detail="Route provider is unavailable",
-        ) from exc
+        logger.info(
+            "Falling back to deterministic route geometry: "
+            "path=/api/routes/plan"
+        )
+        route_candidates = build_fallback_route_candidates(request)
 
     if not route_candidates:
         raise HTTPException(
@@ -248,64 +257,25 @@ async def plan_route(
     # 2. Add eScape sensory information to each route.
     # ------------------------------------------------------------------
 
-    route_responses = [
-    RouteOptionResponse(
-        route_identifier=candidate.route_identifier,
-        encoded_polyline=candidate.encoded_polyline,
-        points=candidate.points,
-        estimated_travel_minutes=candidate.estimated_travel_minutes,
-        travel_mode=request.travel_mode,
-
-        sensory_score=None,
-        sensory_indicator=None,
-        is_recommended=index == 0,
-
-        pedestrian_data_availability="unavailable",
-        data_availability_status="unavailable",
-        matched_sensor_count=0,
-        sensor_coverage_ratio=0.0,
-
-        route_segments=[
-            RouteSegmentResponse(
-                segment_sequence=segment.segment_sequence,
-                encoded_polyline=segment.encoded_polyline,
-                points=segment.points,
-                distance_m=segment.distance_m,
-                duration_seconds=segment.duration_seconds,
-                matched_sensor_count=0,
-                congestion_level=None,
-                sensory_score=None,
-                data_availability="unavailable",
-                pedestrian_count=None,
-                threshold_exceeded=False,
-                data_source=None,
-                observed_at=None,
-                freshness_status=None,
-            )
-            for segment in candidate.segments
-        ],
-
-        warning_message="Sensory scoring is temporarily unavailable.",
-        threshold_exceeded=False,
-        qualifies_preference=False,
-        recommendation_explanation=(
-            "Temporary walking route generated using OSRM."
-        ),
-        data_freshness=None,
-        observed_at=None,
-        updated_at=None,
+    route_build_results = [
+        build_route_response(
+            candidate=candidate,
+            request=request,
+            pedestrian_repository=pedestrian_repository,
+            sensor_matching_service=sensor_matching_service,
+            sensory_scoring_service=sensory_scoring_service,
+        )
+        for candidate in route_candidates
+    ]
+    route_responses = [result.response for result in route_build_results]
+    recommendation = mark_recommended_route(
+        route_responses,
+        request.crowd_threshold,
     )
-    for index, candidate in enumerate(route_candidates)
-]
-
-
+    persist_route_plan(db, request, route_build_results)
 
     recommended_identifier = next(
-        (
-            route.route_identifier
-            for route in route_responses
-            if route.is_recommended
-        ),
+        (route.route_identifier for route in route_responses if route.is_recommended),
         None,
     )
 
@@ -317,19 +287,86 @@ async def plan_route(
     )
 
     return RoutePlanResponse(
-        recommended_route_identifier=(
-            route_responses[0].route_identifier
-            if route_responses
-            else None
-        ),
+        recommended_route_identifier=recommended_identifier,
         routes=route_responses,
         preferred_crowd_threshold=request.crowd_threshold,
-        threshold_message=(
-            "Sensory scoring will be added after routing validation."
-        ),
-        all_routes_high=False,
-        personalised_recommendations_available=False,
+        threshold_message=recommendation["message"],
+        all_routes_high=recommendation["all_routes_high"],
+        personalised_recommendations_available=recommendation["personalised"],
     )
+
+
+def build_fallback_route_candidates(
+    request: RoutePlanningRequest,
+) -> list[RouteCandidate]:
+    """
+    Creates simple deterministic route alternatives when the
+    live routing provider is unavailable.
+
+    The fallback keeps the app testable without external
+    routing infrastructure.
+    """
+
+    origin = (request.origin_latitude, request.origin_longitude)
+    destination = (
+        request.destination_latitude,
+        request.destination_longitude,
+    )
+
+    candidates: list[RouteCandidate] = []
+
+    for index, (lat_delta, lng_delta, label) in enumerate(
+        FALLBACK_ROUTE_DELTAS,
+        start=1,
+    ):
+        midpoint = (
+            (origin[0] + destination[0]) / 2 + lat_delta,
+            (origin[1] + destination[1]) / 2 + lng_delta,
+        )
+
+        points = [origin, midpoint, destination]
+        distance_m = _approximate_distance_m(origin, midpoint) + _approximate_distance_m(midpoint, destination)
+
+        candidates.append(
+            RouteCandidate(
+                route_identifier=f"fallback_route_{index}",
+                encoded_polyline=None,
+                points=points,
+                estimated_travel_minutes=max(1, round(distance_m / 80)),
+                segments=[
+                    RouteSegmentCandidate(
+                        segment_sequence=1,
+                        encoded_polyline=None,
+                        points=points,
+                        distance_m=distance_m,
+                        duration_seconds=max(60, round(distance_m / 80) * 60),
+                        mode="walking",
+                    )
+                ],
+            )
+        )
+
+    return candidates
+
+
+def _approximate_distance_m(
+    start: tuple[float, float],
+    end: tuple[float, float],
+) -> int:
+    """
+    Estimates walking distance between two coordinates.
+
+    The result is deliberately coarse and is only used when
+    the live route provider is unavailable.
+    """
+
+    from math import cos, radians, sqrt
+
+    lat_km = 111.0 * (end[0] - start[0])
+    lng_km = 111.0 * cos(radians((start[0] + end[0]) / 2)) * (
+        end[1] - start[1]
+    )
+    return max(1, round(sqrt(lat_km * lat_km + lng_km * lng_km) * 1000))
 
 
 
@@ -523,6 +560,8 @@ def build_route_response(
 
             encoded_polyline=segment.encoded_polyline,
 
+            points=segment.points,
+
             distance_m=segment.distance_m,
 
             duration_seconds=segment.duration_seconds,
@@ -558,9 +597,9 @@ def build_route_response(
             ),
 
             threshold_exceeded=(
-                score_by_sequence[
+                bool(score_by_sequence[
                     segment.segment_sequence
-                ].threshold_exceeded
+                ].threshold_exceeded)
             ),
 
             data_source=(
@@ -580,6 +619,27 @@ def build_route_response(
                     segment.segment_sequence
                 ].freshness_status
             ),
+
+            matched_sensors=[
+                MatchedSensorResponse(
+                    sensor_id=match.sensor.sensor_id,
+                    sensor_name=match.sensor.sensor_name,
+                    latitude=match.sensor.latitude,
+                    longitude=match.sensor.longitude,
+                    pedestrian_count=(
+                        counts_by_sensor[match.sensor.sensor_id].total_count
+                        if match.sensor.sensor_id in counts_by_sensor
+                        else None
+                    ),
+                    observed_at=(
+                        counts_by_sensor[match.sensor.sensor_id].observed_at
+                        if match.sensor.sensor_id in counts_by_sensor
+                        and isinstance(counts_by_sensor[match.sensor.sensor_id].observed_at, datetime)
+                        else None
+                    ),
+                )
+                for match in segment_matches[segment.segment_sequence - 1].matched_sensors
+            ],
         )
 
         for segment in segments
@@ -632,11 +692,11 @@ def build_route_response(
             warning_message=route_score.warning_message,
 
             threshold_exceeded=(
-                route_score.threshold_exceeded
+                bool(route_score.threshold_exceeded)
             ),
 
             qualifies_preference=(
-                route_score.qualifies_preference
+                bool(route_score.qualifies_preference)
             ),
 
             data_freshness=(

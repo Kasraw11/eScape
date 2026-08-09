@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getRefugeDetails, getRefugeFeedbackSummary, planRoute, searchRefuges } from "../services/api.js";
+import AccessibleDialog from "./AccessibleDialog.jsx";
 import PointMapPanel from "./PointMapPanel.jsx";
 import RefugeFeedbackDialog from "./RefugeFeedbackDialog.jsx";
 import RefugeFeedbackSummary from "./RefugeFeedbackSummary.jsx";
@@ -66,6 +67,8 @@ export default function RefugesPage() {
   const [error, setError] = useState("");
   const [emptyMessage, setEmptyMessage] = useState("");
   const [directionsMessage, setDirectionsMessage] = useState("");
+  const [directionRoute, setDirectionRoute] = useState(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [feedbackSummary, setFeedbackSummary] = useState(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [feedbackError, setFeedbackError] = useState("");
@@ -73,6 +76,7 @@ export default function RefugesPage() {
   const [feedbackVersion, setFeedbackVersion] = useState(0);
   const [feedbackNotice, setFeedbackNotice] = useState("");
   const leaveFeedbackRef = useRef(null);
+  const detailsReturnRef = useRef(null);
 
   const requestBrowserLocation = useCallback(() => {
     if (permissionRequested) return;
@@ -187,6 +191,7 @@ export default function RefugesPage() {
     setSelectedId(refuge.refuge_id);
     setDetails(null);
     setDirectionsMessage("");
+    setDirectionRoute(null);
     setFeedbackNotice("");
     try {
       const parameters = location ? { latitude: location.latitude, longitude: location.longitude, selected_datetime: selectedDateTimeIso(selectedDateTime) } : {};
@@ -196,6 +201,12 @@ export default function RefugesPage() {
     }
   }, [location, selectedDateTime, visibleRefuges]);
 
+  async function openDetails(refuge, trigger) {
+    detailsReturnRef.current = trigger;
+    setDetailsModalOpen(true);
+    await selectRefuge(refuge);
+  }
+
   async function requestDirections(refuge) {
     if (!location) {
       setDirectionsMessage("Choose a location before requesting directions.");
@@ -204,10 +215,18 @@ export default function RefugesPage() {
     setSelectedId(refuge.refuge_id);
     setDetails(null);
     setDirectionsMessage("Finding walking directions…");
+    setDirectionRoute(null);
     try {
       const response = await planRoute({ origin_latitude: location.latitude, origin_longitude: location.longitude, destination_latitude: refuge.latitude, destination_longitude: refuge.longitude, travel_mode: "walking", preferred_crowd_threshold: 3 });
       const route = response.routes?.find((item) => item.is_recommended) || response.routes?.[0];
-      setDirectionsMessage(route ? `Walking directions found: approximately ${route.estimated_travel_minutes} minutes. Routing conditions may change.` : "The route provider returned no walking directions.");
+      if (route) {
+        const distance = (route.route_segments || []).reduce((total, segment) => total + Number(segment.distance_m || 0), 0);
+        setDirectionRoute(route);
+        setDirectionsMessage(`Walking to ${refuge.name}: approximately ${route.estimated_travel_minutes} minutes · ${distanceLabel(distance)}. Routing conditions may change.`);
+        setDetailsModalOpen(false);
+      } else {
+        setDirectionsMessage("The route provider returned no walking directions.");
+      }
     } catch (requestError) {
       setDirectionsMessage(`${requestError.message} Refuge details remain available.`);
     }
@@ -262,7 +281,7 @@ export default function RefugesPage() {
         </section>
 
         <div className="refuge-map-area">
-          <PointMapPanel title="Nearby refuges" points={mapPoints} selectedId={selectedId} onSelect={selectRefuge} onChooseLocation={chooseMapLocation} label="Sensory refuge map" legend="Green Park · Blue Library · Purple Quiet space. Selected markers have a dark outline." />
+          <PointMapPanel title="Nearby refuges" points={mapPoints} selectedId={selectedId} onSelect={selectRefuge} onChooseLocation={chooseMapLocation} routePoints={directionRoute?.points || []} routeSummary={directionsMessage} label="Sensory refuge map" legend="Green Park · Blue Library · Purple Quiet space. Blue line shows walking directions. Selected markers have a dark outline." />
         </div>
 
         <section className="refuge-results glass-panel" aria-labelledby="refuge-results-heading">
@@ -277,13 +296,13 @@ export default function RefugesPage() {
                 <span className="refuge-card__meta"><span><strong>{openingLabel(item.opening_status)}</strong>{item.opening_status === "open" && item.opening_hours_summary ? <small>{item.opening_hours_summary}</small> : null}</span><span>{item.estimated_travel_minutes} min walk</span></span>
               </button>
               <h3 className="sr-only">{item.name}</h3>
-              <div className="card-actions"><button type="button" onClick={() => selectRefuge(item)}>View details</button><button type="button" onClick={() => requestDirections(item)}>Directions</button></div>
+              <div className="card-actions"><button type="button" onClick={(event) => openDetails(item, event.currentTarget)}>View details</button><button type="button" onClick={() => requestDirections(item)}>Directions</button></div>
             </article>
           ))}</div>
         </section>
 
-        {selected ? <section className="detail-panel refuge-detail glass-panel" aria-labelledby="refuge-detail-heading">
-          <div className="refuge-detail__heading"><div><p className="section-kicker">Selected refuge</p><h2 id="refuge-detail-heading">{selected.name}</h2><p>{selected.category} · {distanceLabel(selected.distance_m)}</p></div><span className={`opening-badge opening-badge--${selected.opening_status}`}>{openingLabel(selected.opening_status)}</span></div>
+        {selected && detailsModalOpen ? <AccessibleDialog open={detailsModalOpen} onClose={() => setDetailsModalOpen(false)} titleId="refuge-detail-heading" className="refuge-detail-dialog" returnFocusRef={detailsReturnRef}><section className="detail-panel refuge-detail" aria-labelledby="refuge-detail-heading">
+          <div className="refuge-detail__heading"><div><p className="section-kicker">Selected refuge</p><h2 id="refuge-detail-heading">{selected.name}</h2><p>{selected.category} · {distanceLabel(selected.distance_m)}</p></div><div className="refuge-detail__actions"><span className={`opening-badge opening-badge--${selected.opening_status}`}>{openingLabel(selected.opening_status)}</span><button type="button" className="dialog-close" onClick={() => setDetailsModalOpen(false)} aria-label="Close refuge details">×</button></div></div>
           <p className="refuge-detail__description">{selected.sensory_suitability_description || "Description unavailable"}</p>
           <dl className="refuge-detail__facts">
             <div><dt>Opening hours</dt><dd>{selected.opening_hours_summary || selected.operating_hours || openingLabel(selected.opening_status)}</dd></div>
@@ -294,7 +313,7 @@ export default function RefugesPage() {
           <button type="button" className="primary-button refuge-directions-button" onClick={() => requestDirections(selected)}>Get directions <span aria-hidden="true">→</span></button>
           {directionsMessage ? <p role="status" aria-live="polite" className="directions-status">{directionsMessage}</p> : null}
           <RefugeFeedbackSummary summary={feedbackSummary} loading={feedbackLoading} error={feedbackError} onLeaveFeedback={() => setFeedbackModalOpen(true)} leaveFeedbackRef={leaveFeedbackRef} />
-        </section> : null}
+        </section></AccessibleDialog> : null}
       </div>
 
       <RefugeFeedbackDialog open={feedbackModalOpen} refuge={selected} onClose={() => setFeedbackModalOpen(false)} onSubmitted={feedbackSubmitted} returnFocusRef={leaveFeedbackRef} />

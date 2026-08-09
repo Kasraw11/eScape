@@ -145,6 +145,16 @@
 .refuge-map-area .map-notice { min-height: 410px; align-content: center; border-radius: 16px; background: linear-gradient(145deg, #f1f6fc, #e8f2f1); padding: 28px; text-align: center; }
 .refuge-map-area .map-text-alternative { max-height: 142px; overflow-y: auto; }
 .refuge-map-area .point-map-legend { margin-bottom: 0; }
+.refuge-route-summary {
+  margin: 12px 0 0;
+  border-left: 4px solid var(--primary);
+  border-radius: 9px;
+  color: var(--text-secondary);
+  background: var(--primary-soft);
+  padding: 10px 12px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
 
 .refuge-results .results-heading h2 { font-size: 1.1rem; }
 .refuge-results .results-heading > span { color: var(--text-muted); font-size: 0.75rem; }
@@ -178,7 +188,16 @@
 .refuge-card .card-actions button + button { border-left: 1px solid var(--surface-border); }
 
 .refuge-detail { border-radius: 22px; padding: 22px; }
+.refuge-detail-dialog {
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(88vh, 820px);
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.98);
+}
+.refuge-detail-dialog .refuge-detail { padding: 0; }
 .refuge-detail__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.refuge-detail__actions { display: flex; align-items: center; gap: 10px; }
+.refuge-detail__actions .dialog-close { flex: 0 0 auto; }
 .refuge-detail__heading h2 { margin-top: 3px; font-size: 1.45rem; }
 .refuge-detail__heading p:last-child { margin: 5px 0 0; color: var(--text-secondary); font-size: 0.85rem; }
 .opening-badge { display: inline-flex; min-height: 32px; align-items: center; border-radius: 999px; color: var(--text-muted); background: #eef2f7; padding: 6px 10px; font-size: 0.72rem; font-weight: 800; white-space: nowrap; }

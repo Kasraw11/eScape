@@ -6,8 +6,8 @@ from typing import Literal
 from pydantic import AliasChoices, BaseModel, Field, model_validator
 
 
-MELBOURNE_CBD_LATITUDE_RANGE = (-37.8255, -37.8050)
-MELBOURNE_CBD_LONGITUDE_RANGE = (144.9440, 144.9765)
+MELBOURNE_CBD_LATITUDE_RANGE = (-37.8350, -37.7900)
+MELBOURNE_CBD_LONGITUDE_RANGE = (144.9350, 144.9900)
 
 
 class RoutePlanningRequest(BaseModel):
@@ -75,6 +75,15 @@ class RoutePlanningRequest(BaseModel):
         return self
 
 
+class MatchedSensorResponse(BaseModel):
+    sensor_id: int
+    sensor_name: str
+    latitude: float
+    longitude: float
+    pedestrian_count: int | None = None
+    observed_at: datetime | None = None
+
+
 class RouteSegmentResponse(BaseModel):
     route_segment_id: int | None = None
 
@@ -105,6 +114,8 @@ class RouteSegmentResponse(BaseModel):
     observed_at: datetime | None = None
 
     freshness_status: str | None = None
+
+    matched_sensors: list[MatchedSensorResponse] = Field(default_factory=list)
 
 
 class RouteOptionResponse(BaseModel):

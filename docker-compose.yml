@@ -1,4 +1,44 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: escape_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: escape_db
+      POSTGRES_USER: escape
+      POSTGRES_PASSWORD: escape_local
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U escape -d escape_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  osrm:
+    image: osrm/osrm-backend:latest
+    container_name: escape_osrm
+    restart: unless-stopped
+    command: >
+      sh -c "
+      if [ ! -f /data/melbourne.osrm ]; then
+        osrm-extract -p /opt/foot.lua /data/melbourne.osm.pbf &&
+        osrm-partition /data/melbourne.osrm &&
+        osrm-customize /data/melbourne.osrm;
+      fi &&
+      osrm-routed --algorithm mld --port 5000 /data/melbourne.osrm"
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./routing-data:/data
+    healthcheck:
+      test: ["CMD", "bash", "-c", "</dev/tcp/127.0.0.1/5000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   mysql:
     image: mysql:8.4
     container_name: escape_mysql
@@ -20,4 +60,5 @@ services:
       retries: 5
 
 volumes:
+  postgres_data:
   mysql_data:

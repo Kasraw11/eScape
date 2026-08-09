@@ -239,3 +239,6 @@ frontend/coverage/
 frontend/.env.local
 frontend/npm-debug.log*
 *.tsbuildinfo
+
+# Generated local OSRM routing data
+routing-data/

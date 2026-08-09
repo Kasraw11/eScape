@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     melbourne_pedestrian_api_timeout_seconds: float = 15.0
     melbourne_pedestrian_api_limit: int = 100
 
+    melbourne_sensor_locations_api_url: str = (
+        "https://data.melbourne.vic.gov.au/api/explore/v2.1/catalog/datasets/"
+        "pedestrian-counting-system-sensor-locations/records"
+    )
+
     melbourne_landmarks_api_url: str = (
         "https://data.melbourne.vic.gov.au/api/explore/v2.1/catalog/datasets/"
         "landmarks-and-places-of-interest-including-schools-theatres-health-services-spor/records"

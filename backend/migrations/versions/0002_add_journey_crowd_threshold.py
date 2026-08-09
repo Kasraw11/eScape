@@ -11,8 +11,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = "0002_add_journey_crowd_threshold"
-down_revision: Union[str, None] = "0001_create_initial_escape_tables"
+revision: str = "0002"
+down_revision: Union[str, None] = "0001"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

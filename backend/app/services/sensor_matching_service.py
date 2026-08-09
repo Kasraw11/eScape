@@ -7,7 +7,7 @@ from app.repositories.pedestrian_repository import SensorRecord
 from app.services.google_maps_service import RouteSegmentCandidate
 
 
-MATCHING_DISTANCE_M = 75
+MATCHING_DISTANCE_M = 150
 DEGREES_PER_METER = 1 / 111_320
 
 

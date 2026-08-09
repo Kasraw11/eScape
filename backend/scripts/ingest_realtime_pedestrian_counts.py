@@ -22,15 +22,27 @@ async def run() -> None:
     if SessionLocal is None:
         raise RuntimeError("DATABASE_URL is not configured")
 
-    records = await MelbournePedestrianClient().fetch_latest()
+    client = MelbournePedestrianClient()
+    sensor_records = await client.fetch_sensor_locations()
+    records = await client.fetch_latest()
     with SessionLocal() as db:
         try:
-            stats = PedestrianIngestionService(db).ingest(records)
+            service = PedestrianIngestionService(db)
+            sensor_stats = service.ingest_sensor_locations(sensor_records)
+            db.flush()
+            stats = service.ingest(records)
             db.commit()
         except Exception:
             db.rollback()
             raise
 
+    logger.info(
+        "Sensor-location sync completed: inserted=%d updated=%d skipped=%d invalid=%d",
+        sensor_stats.inserted,
+        sensor_stats.updated,
+        sensor_stats.skipped,
+        sensor_stats.invalid,
+    )
     logger.info(
         "Realtime pedestrian ingestion completed: inserted=%d updated=%d skipped=%d invalid=%d",
         stats.inserted,

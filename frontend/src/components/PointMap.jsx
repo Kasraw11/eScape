@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-
+import { useEffect } from "react";
 import {
-  hasConfiguredMapsKey,
-  loadGoogleMaps,
-  MELBOURNE_CBD_CENTER,
-  MISSING_MAPS_KEY_MESSAGE,
-} from "../services/googleMapsLoader.js";
+  CircleMarker,
+  MapContainer,
+  Polyline,
+  Popup,
+  TileLayer,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
+import L from "leaflet";
 
+import "leaflet/dist/leaflet.css";
+
+const MELBOURNE_CBD_CENTER = [-37.8136, 144.9631];
 const COLORS = {
   Park: "#15803d",
   Library: "#2563eb",
@@ -20,74 +26,113 @@ const COLORS = {
   Unavailable: "#475569",
 };
 
-export default function PointMap({ points, selectedId, onSelect, onChooseLocation, expanded = false, label = "Melbourne map" }) {
-  const containerRef = useRef(null);
-  const [loadError, setLoadError] = useState("");
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY;
-  const configured = hasConfiguredMapsKey(apiKey);
+function FitPointBounds({ points, routePoints, expanded }) {
+  const map = useMap();
 
   useEffect(() => {
-    if (!configured || !containerRef.current) return undefined;
-    let cancelled = false;
-    const markers = [];
-    let mapClickListener;
-    loadGoogleMaps(apiKey).then((maps) => {
-      if (cancelled || !containerRef.current) return;
-      const center = points[0] ? { lat: points[0].latitude, lng: points[0].longitude } : MELBOURNE_CBD_CENTER;
-      const map = new maps.Map(containerRef.current, {
-        center,
-        zoom: 14,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-      });
-      const bounds = new maps.LatLngBounds();
-      points.forEach((point) => {
-        const selected = String(point.id) === String(selectedId);
-        const marker = new maps.Marker({
-          map,
-          position: { lat: point.latitude, lng: point.longitude },
-          title: `${point.name}: ${point.status}`,
-          icon: maps.SymbolPath ? {
-            path: maps.SymbolPath.CIRCLE,
-            fillColor: COLORS[point.status] || "#2563eb",
-            fillOpacity: 1,
-            strokeColor: selected ? "#102a43" : "#ffffff",
-            strokeWeight: selected ? 4 : 2,
-            scale: selected ? 10 : 8,
-          } : undefined,
-        });
-        marker.addListener("click", () => onSelect?.(point.id));
-        markers.push(marker);
-        bounds.extend({ lat: point.latitude, lng: point.longitude });
-      });
-      if (points.length > 1) map.fitBounds(bounds, expanded ? 60 : 36);
-      mapClickListener = onChooseLocation ? map.addListener("click", (event) => {
-        const latitude = event.latLng?.lat?.();
-        const longitude = event.latLng?.lng?.();
-        if (Number.isFinite(latitude) && Number.isFinite(longitude)) onChooseLocation({ latitude, longitude, label: "Selected map location" });
-      }) : null;
-    }).catch(() => {
-      if (!cancelled) setLoadError("Map preview could not load. The text list remains available.");
-    });
-    return () => {
-      cancelled = true;
-      markers.forEach((marker) => marker.setMap?.(null));
-      mapClickListener?.remove?.();
-    };
-  }, [apiKey, configured, expanded, onChooseLocation, onSelect, points, selectedId]);
+    map.invalidateSize();
+    const allPoints = [
+      ...points.map((point) => [point.latitude, point.longitude]),
+      ...routePoints,
+    ];
+    if (!allPoints.length) {
+      map.setView(MELBOURNE_CBD_CENTER, 14);
+      return;
+    }
+    if (allPoints.length === 1) {
+      map.setView(allPoints[0], 16);
+      return;
+    }
+    map.fitBounds(
+      L.latLngBounds(allPoints),
+      { padding: expanded ? [60, 60] : [36, 36], maxZoom: 16 }
+    );
+  }, [expanded, map, points, routePoints]);
 
+  return null;
+}
+
+function LocationPicker({ onChooseLocation }) {
+  useMapEvents({
+    click(event) {
+      onChooseLocation?.({
+        latitude: event.latlng.lat,
+        longitude: event.latlng.lng,
+        label: "Selected map location",
+      });
+    },
+  });
+  return null;
+}
+
+export default function PointMap({
+  points,
+  selectedId,
+  onSelect,
+  onChooseLocation,
+  routePoints = [],
+  expanded = false,
+  label = "Melbourne map",
+}) {
   return (
     <div className="point-map">
-      {configured ? <div className="map-canvas" ref={containerRef} aria-label={label} /> : <p className="map-notice">{MISSING_MAPS_KEY_MESSAGE}</p>}
-      {loadError ? <p className="map-notice" role="alert">{loadError}</p> : null}
+      <div className="map-canvas" aria-label={label}>
+        <MapContainer
+          center={MELBOURNE_CBD_CENTER}
+          zoom={14}
+          scrollWheelZoom
+          style={{ width: "100%", height: "100%", minHeight: expanded ? "70vh" : "360px" }}
+        >
+          <TileLayer
+            attribution="&copy; OpenStreetMap contributors"
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <FitPointBounds points={points} routePoints={routePoints} expanded={expanded} />
+          <LocationPicker onChooseLocation={onChooseLocation} />
+          {routePoints.length > 1 ? (
+            <Polyline
+              positions={routePoints}
+              pathOptions={{ color: "#4965e8", weight: 6, opacity: 0.95 }}
+            />
+          ) : null}
+          {points.map((point) => {
+            const selected = String(point.id) === String(selectedId);
+            return (
+              <CircleMarker
+                key={point.id}
+                center={[point.latitude, point.longitude]}
+                radius={selected ? 10 : 8}
+                pathOptions={{
+                  color: selected ? "#102a43" : "#ffffff",
+                  weight: selected ? 4 : 2,
+                  fillColor: COLORS[point.status] || "#2563eb",
+                  fillOpacity: 1,
+                }}
+                eventHandlers={{ click: () => onSelect?.(point.id) }}
+              >
+                <Popup>
+                  <strong>{point.name}</strong><br />
+                  {point.status}
+                  {point.confidence ? `, ${point.confidence} confidence` : ""}
+                </Popup>
+              </CircleMarker>
+            );
+          })}
+        </MapContainer>
+      </div>
+
       <div className="map-text-alternative" aria-label={`${label} text alternative`}>
         <strong>Map locations</strong>
         {points.length ? (
           <ul>{points.map((point) => (
             <li key={point.id}>
-              <button type="button" aria-pressed={String(point.id) === String(selectedId)} onClick={() => onSelect?.(point.id)}>
-                {point.name} — {point.status}{point.confidence ? `, ${point.confidence} confidence` : ""}
+              <button
+                type="button"
+                aria-pressed={String(point.id) === String(selectedId)}
+                onClick={() => onSelect?.(point.id)}
+              >
+                {point.name} — {point.status}
+                {point.confidence ? `, ${point.confidence} confidence` : ""}
               </button>
             </li>
           ))}</ul>

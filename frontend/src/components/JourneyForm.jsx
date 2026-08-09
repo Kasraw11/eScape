@@ -26,7 +26,7 @@ export default function JourneyForm({
    * and uses it as the journey origin.
    */
   function useCurrentLocation() {
-    if (!navigator.geolocation) {
+    if (!globalThis.navigator.geolocation) {
       setLocationNotice(
         "Current location is unavailable."
       );
@@ -37,7 +37,7 @@ export default function JourneyForm({
       "Finding your location..."
     );
 
-    navigator.geolocation.getCurrentPosition(
+    globalThis.navigator.geolocation.getCurrentPosition(
       (position) => {
         setOrigin({
           id: "current",

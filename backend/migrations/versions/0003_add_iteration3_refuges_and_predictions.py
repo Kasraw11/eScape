@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 
 revision: str = "0003"
-down_revision: str | None = "0002_add_journey_crowd_threshold"
+down_revision: str | None = "0002"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
