@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { CircleMarker, MapContainer, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
+import { useEffect } from "react";
 
-import {
-  hasConfiguredMapsKey,
-  loadGoogleMaps,
-  MELBOURNE_CBD_CENTER,
-  MISSING_MAPS_KEY_MESSAGE,
-} from "../services/googleMapsLoader.js";
+import "leaflet/dist/leaflet.css";
+
+const MELBOURNE_CBD_CENTER = [-37.8136, 144.9631];
 
 const COLORS = {
   Park: "#15803d",
@@ -20,67 +18,102 @@ const COLORS = {
   Unavailable: "#475569",
 };
 
-export default function PointMap({ points, selectedId, onSelect, onChooseLocation, expanded = false, label = "Melbourne map" }) {
-  const containerRef = useRef(null);
-  const [loadError, setLoadError] = useState("");
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY;
-  const configured = hasConfiguredMapsKey(apiKey);
+const USER_COLOR = "#0f172a";
+
+// AC1: the map has to centre on the user, so their position wins over the
+// refuge markers. Without a location we fall back to fitting the markers,
+// and with neither we just show the CBD.
+function RecentreMap({ userLocation, points }) {
+  const map = useMap();
 
   useEffect(() => {
-    if (!configured || !containerRef.current) return undefined;
-    let cancelled = false;
-    const markers = [];
-    let mapClickListener;
-    loadGoogleMaps(apiKey).then((maps) => {
-      if (cancelled || !containerRef.current) return;
-      const center = points[0] ? { lat: points[0].latitude, lng: points[0].longitude } : MELBOURNE_CBD_CENTER;
-      const map = new maps.Map(containerRef.current, {
-        center,
-        zoom: 14,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-      });
-      const bounds = new maps.LatLngBounds();
-      points.forEach((point) => {
-        const selected = String(point.id) === String(selectedId);
-        const marker = new maps.Marker({
-          map,
-          position: { lat: point.latitude, lng: point.longitude },
-          title: `${point.name}: ${point.status}`,
-          icon: maps.SymbolPath ? {
-            path: maps.SymbolPath.CIRCLE,
-            fillColor: COLORS[point.status] || "#2563eb",
-            fillOpacity: 1,
-            strokeColor: selected ? "#102a43" : "#ffffff",
-            strokeWeight: selected ? 4 : 2,
-            scale: selected ? 10 : 8,
-          } : undefined,
-        });
-        marker.addListener("click", () => onSelect?.(point.id));
-        markers.push(marker);
-        bounds.extend({ lat: point.latitude, lng: point.longitude });
-      });
-      if (points.length > 1) map.fitBounds(bounds, expanded ? 60 : 36);
-      mapClickListener = onChooseLocation ? map.addListener("click", (event) => {
-        const latitude = event.latLng?.lat?.();
-        const longitude = event.latLng?.lng?.();
-        if (Number.isFinite(latitude) && Number.isFinite(longitude)) onChooseLocation({ latitude, longitude, label: "Selected map location" });
-      }) : null;
-    }).catch(() => {
-      if (!cancelled) setLoadError("Map preview could not load. The text list remains available.");
-    });
-    return () => {
-      cancelled = true;
-      markers.forEach((marker) => marker.setMap?.(null));
-      mapClickListener?.remove?.();
-    };
-  }, [apiKey, configured, expanded, onChooseLocation, onSelect, points, selectedId]);
+    if (userLocation) {
+      map.setView([userLocation.latitude, userLocation.longitude], 14);
+      return;
+    }
+    if (points.length) {
+      const bounds = points.map((point) => [point.latitude, point.longitude]);
+      map.fitBounds(bounds, { padding: [40, 40] });
+      return;
+    }
+    map.setView(MELBOURNE_CBD_CENTER, 14);
+  }, [map, points, userLocation]);
 
+  return null;
+}
+
+function MapClickHandler({ onChooseLocation }) {
+  useMapEvents({
+    click(event) {
+      const { lat, lng } = event.latlng;
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        onChooseLocation?.({ latitude: lat, longitude: lng, label: "Selected map location" });
+      }
+    },
+  });
+  return null;
+}
+
+export default function PointMap({
+  points = [],
+  selectedId,
+  onSelect,
+  onChooseLocation,
+  userLocation = null,
+  expanded = false,
+  label = "Melbourne map",
+}) {
   return (
     <div className="point-map">
-      {configured ? <div className="map-canvas" ref={containerRef} aria-label={label} /> : <p className="map-notice">{MISSING_MAPS_KEY_MESSAGE}</p>}
-      {loadError ? <p className="map-notice" role="alert">{loadError}</p> : null}
+      {/* Height comes from the stylesheet (.map-canvas, and the refuge-page and
+          modal overrides). Setting it here as well just fights those rules. */}
+      <div className="map-canvas" aria-label={label}>
+        <MapContainer
+          center={MELBOURNE_CBD_CENTER}
+          zoom={14}
+          scrollWheelZoom
+          style={{ width: "100%", height: "100%" }}
+        >
+          <TileLayer
+            attribution="&copy; OpenStreetMap contributors"
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+
+          <RecentreMap userLocation={userLocation} points={points} />
+          {onChooseLocation ? <MapClickHandler onChooseLocation={onChooseLocation} /> : null}
+
+          {userLocation ? (
+            <CircleMarker
+              center={[userLocation.latitude, userLocation.longitude]}
+              radius={9}
+              pathOptions={{ color: "#ffffff", weight: 3, fillColor: USER_COLOR, fillOpacity: 1 }}
+            >
+              <Tooltip direction="top">Your location</Tooltip>
+            </CircleMarker>
+          ) : null}
+
+          {points.map((point) => {
+            const selected = String(point.id) === String(selectedId);
+            return (
+              <CircleMarker
+                key={point.id}
+                center={[point.latitude, point.longitude]}
+                radius={selected ? 11 : 8}
+                pathOptions={{
+                  color: selected ? "#102a43" : "#ffffff",
+                  weight: selected ? 4 : 2,
+                  fillColor: COLORS[point.status] || "#2563eb",
+                  fillOpacity: 1,
+                }}
+                eventHandlers={{ click: () => onSelect?.(point.id) }}
+              >
+                <Tooltip direction="top">{`${point.name}: ${point.status}`}</Tooltip>
+              </CircleMarker>
+            );
+          })}
+        </MapContainer>
+      </div>
+
       <div className="map-text-alternative" aria-label={`${label} text alternative`}>
         <strong>Map locations</strong>
         {points.length ? (

@@ -1,11 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
+import dynamic from "next/dynamic";
 
 import AccessibleMapModal from "./AccessibleMapModal.jsx";
-import PointMap from "./PointMap.jsx";
 
-export default function PointMapPanel({ title, points, selectedId, onSelect, onChooseLocation, legend, label }) {
+// Leaflet needs the browser's window object, so this has to stay out of SSR.
+const PointMap = dynamic(() => import("./PointMap.jsx"), { ssr: false });
+
+export default function PointMapPanel({ title, points, selectedId, onSelect, onChooseLocation, userLocation, legend, label }) {
   const [expanded, setExpanded] = useState(false);
   const expandRef = useRef(null);
   return (
@@ -14,10 +17,10 @@ export default function PointMapPanel({ title, points, selectedId, onSelect, onC
         <div><p className="section-kicker">Map</p><h2 id="point-map-heading">{title}</h2></div>
         <button type="button" ref={expandRef} onClick={() => setExpanded(true)}>Expand map</button>
       </div>
-      <PointMap points={points} selectedId={selectedId} onSelect={onSelect} onChooseLocation={onChooseLocation} label={label} />
+      <PointMap points={points} selectedId={selectedId} onSelect={onSelect} onChooseLocation={onChooseLocation} userLocation={userLocation} label={label} />
       <p className="point-map-legend"><strong>Legend:</strong> {legend}</p>
       <AccessibleMapModal open={expanded} title={title} onClose={() => setExpanded(false)} returnFocusRef={expandRef}>
-        <PointMap points={points} selectedId={selectedId} onSelect={onSelect} onChooseLocation={onChooseLocation} label={`Expanded ${label}`} expanded />
+        <PointMap points={points} selectedId={selectedId} onSelect={onSelect} onChooseLocation={onChooseLocation} userLocation={userLocation} label={`Expanded ${label}`} expanded />
         <p className="point-map-legend"><strong>Legend:</strong> {legend}</p>
       </AccessibleMapModal>
     </section>
