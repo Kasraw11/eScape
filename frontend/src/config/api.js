@@ -1,5 +1,5 @@
-// Default local FastAPI backend URL.
-const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000";
+// Same-origin Next.js proxy; FastAPI remains bound to localhost.
+const DEFAULT_API_BASE_URL = "/backend";
 
 /**
  * Normalizes the backend base URL.

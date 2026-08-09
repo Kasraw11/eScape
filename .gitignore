@@ -242,3 +242,4 @@ frontend/npm-debug.log*
 
 # Generated local OSRM routing data
 routing-data/
+.tools/
