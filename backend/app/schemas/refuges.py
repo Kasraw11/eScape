@@ -21,20 +21,33 @@ CATEGORY_LABELS = {
 }
 
 
+class RefugeOpeningStatus(str, Enum):
+    OPEN = "open"
+    CLOSED = "closed"
+    UNKNOWN = "unknown"
+
+
 class RefugeSummary(BaseModel):
     refuge_id: int
     name: str
-    category: str
+    category: RefugeCategory
+
     address: str | None = None
+
     latitude: float
     longitude: float
+
     distance_m: int
     estimated_travel_minutes: int
-    opening_status: str
+
+    opening_status: RefugeOpeningStatus
     opening_hours_summary: str | None = None
+
     sensory_suitability_description: str
+
     data_source: str | None = None
     data_last_updated: datetime | None = None
+
     limitation_message: str
 
 
@@ -81,8 +94,10 @@ class RefugeFeedbackCreated(BaseModel):
 class RefugeFeedbackSummary(BaseModel):
     refuge_id: int
     response_count: int
+
     average_quietness: float | None = None
     quiet_percentage: int | None = None
     comfortable_percentage: int | None = None
     low_crowding_percentage: int | None = None
+
     crowding_distribution: dict[str, int]

@@ -192,17 +192,18 @@ async def plan_route(
 
 ) -> RoutePlanResponse:
     """
-    Plans possible journeys between the origin and destination.
+    Plans possible journeys between the origin
+    and destination.
 
     Flow:
 
         Origin + destination
                 ↓
-        Routing provider
-                ↓
-        Route candidates
+        OSRM walking routes
                 ↓
         Pedestrian sensor matching
+                ↓
+        Latest pedestrian counts
                 ↓
         Sensory scoring
                 ↓
@@ -212,16 +213,19 @@ async def plan_route(
     """
 
     logger.info(
-        "Route planning started: path=/api/routes/plan"
+        "Route planning started: "
+        "path=/api/routes/plan"
     )
 
-    # ------------------------------------------------------------------
-    # 1. Request possible routes from the routing provider.
-    # ------------------------------------------------------------------
+    # --------------------------------------------------------------
+    # 1. Request route alternatives from OSRM.
+    # --------------------------------------------------------------
 
     try:
         route_candidates = (
-            await routing_service.get_route_alternatives(request)
+            await routing_service.get_route_alternatives(
+                request
+            )
         )
 
     except RoutingServiceError as exc:
@@ -238,68 +242,82 @@ async def plan_route(
             detail="Route provider is unavailable",
         ) from exc
 
+    # OSRM must return at least one route.
     if not route_candidates:
         raise HTTPException(
             status_code=502,
-            detail="Route provider returned no route alternatives",
+            detail=(
+                "Route provider returned "
+                "no route alternatives"
+            ),
         )
 
-    # ------------------------------------------------------------------
-    # 2. Add eScape sensory information to each route.
-    # ------------------------------------------------------------------
+    # --------------------------------------------------------------
+    # 2. Match pedestrian sensors and calculate
+    #    sensory information for every route.
+    # --------------------------------------------------------------
+
+    route_build_results: list[RouteBuildResult] = []
+
+    for candidate in route_candidates:
+        try:
+            result = build_route_response(
+                candidate=candidate,
+                request=request,
+                pedestrian_repository=(
+                    pedestrian_repository
+                ),
+                sensor_matching_service=(
+                    sensor_matching_service
+                ),
+                sensory_scoring_service=(
+                    sensory_scoring_service
+                ),
+            )
+
+            route_build_results.append(result)
+
+        except Exception as exc:
+            logger.exception(
+                "Sensory route processing failed: "
+                "route=%s error_type=%s",
+                candidate.route_identifier,
+                exc.__class__.__name__,
+            )
+
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "Unable to calculate sensory "
+                    "information for the route."
+                ),
+            ) from exc
+
+    # --------------------------------------------------------------
+    # 3. Extract route responses for the frontend.
+    # --------------------------------------------------------------
 
     route_responses = [
-    RouteOptionResponse(
-        route_identifier=candidate.route_identifier,
-        encoded_polyline=candidate.encoded_polyline,
-        points=candidate.points,
-        estimated_travel_minutes=candidate.estimated_travel_minutes,
-        travel_mode=request.travel_mode,
+        result.response
+        for result in route_build_results
+    ]
 
-        sensory_score=None,
-        sensory_indicator=None,
-        is_recommended=index == 0,
+    # --------------------------------------------------------------
+    # 4. Compare the routes and choose the calmer route.
+    #
+    # The recommendation logic already prefers:
+    #
+    # 1. Lower sensory score
+    # 2. Shorter travel time
+    # 3. Original OSRM ordering
+    # --------------------------------------------------------------
 
-        pedestrian_data_availability="unavailable",
-        data_availability_status="unavailable",
-        matched_sensor_count=0,
-        sensor_coverage_ratio=0.0,
-
-        route_segments=[
-            RouteSegmentResponse(
-                segment_sequence=segment.segment_sequence,
-                encoded_polyline=segment.encoded_polyline,
-                points=segment.points,
-                distance_m=segment.distance_m,
-                duration_seconds=segment.duration_seconds,
-                matched_sensor_count=0,
-                congestion_level=None,
-                sensory_score=None,
-                data_availability="unavailable",
-                pedestrian_count=None,
-                threshold_exceeded=False,
-                data_source=None,
-                observed_at=None,
-                freshness_status=None,
-            )
-            for segment in candidate.segments
-        ],
-
-        warning_message="Sensory scoring is temporarily unavailable.",
-        threshold_exceeded=False,
-        qualifies_preference=False,
-        recommendation_explanation=(
-            "Temporary walking route generated using OSRM."
-        ),
-        data_freshness=None,
-        observed_at=None,
-        updated_at=None,
+    recommendation = mark_recommended_route(
+        routes=route_responses,
+        crowd_threshold=request.crowd_threshold,
     )
-    for index, candidate in enumerate(route_candidates)
-]
 
-
-
+    # Find the route that was marked as recommended.
     recommended_identifier = next(
         (
             route.route_identifier
@@ -309,28 +327,60 @@ async def plan_route(
         None,
     )
 
+    # --------------------------------------------------------------
+    # 5. Save the journey, routes, segments and
+    #    sensor scoring information into PostgreSQL.
+    #
+    # persist_route_plan() already handles database
+    # failures without stopping route generation.
+    # --------------------------------------------------------------
+
+    persist_route_plan(
+        db=db,
+        request=request,
+        route_build_results=route_build_results,
+    )
+
+    # --------------------------------------------------------------
+    # 6. Log successful completion.
+    # --------------------------------------------------------------
+
     logger.info(
         "Route planning completed: "
         "path=/api/routes/plan "
-        "status=200 routes=%d",
+        "status=200 routes=%d "
+        "recommended=%s",
         len(route_responses),
+        recommended_identifier,
     )
+
+    # --------------------------------------------------------------
+    # 7. Return the sensory-aware route plan.
+    # --------------------------------------------------------------
 
     return RoutePlanResponse(
         recommended_route_identifier=(
-            route_responses[0].route_identifier
-            if route_responses
-            else None
+            recommended_identifier
         ),
-        routes=route_responses,
-        preferred_crowd_threshold=request.crowd_threshold,
-        threshold_message=(
-            "Sensory scoring will be added after routing validation."
-        ),
-        all_routes_high=False,
-        personalised_recommendations_available=False,
-    )
 
+        routes=route_responses,
+
+        preferred_crowd_threshold=(
+            request.crowd_threshold
+        ),
+
+        threshold_message=(
+            recommendation["message"]
+        ),
+
+        all_routes_high=bool(
+            recommendation["all_routes_high"]
+        ),
+
+        personalised_recommendations_available=bool(
+            recommendation["personalised"]
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -523,6 +573,8 @@ def build_route_response(
 
             encoded_polyline=segment.encoded_polyline,
 
+            points=segment.points,
+
             distance_m=segment.distance_m,
 
             duration_seconds=segment.duration_seconds,
@@ -557,7 +609,7 @@ def build_route_response(
                 ].pedestrian_count
             ),
 
-            threshold_exceeded=(
+            threshold_exceeded=bool(
                 score_by_sequence[
                     segment.segment_sequence
                 ].threshold_exceeded
@@ -631,7 +683,7 @@ def build_route_response(
 
             warning_message=route_score.warning_message,
 
-            threshold_exceeded=(
+           threshold_exceeded=bool(
                 route_score.threshold_exceeded
             ),
 
