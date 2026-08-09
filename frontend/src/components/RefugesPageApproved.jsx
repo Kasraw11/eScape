@@ -53,6 +53,7 @@ export default function RefugesPage() {
   const [locationNotice, setLocationNotice] = useState("");
   const [locationLoading, setLocationLoading] = useState(false);
   const [manualQuery, setManualQuery] = useState("Melbourne CBD");
+  const [searchingLocation, setSearchingLocation] = useState(false);
   const [radius, setRadius] = useState(2000);
   const [selectedDateTime, setSelectedDateTime] = useState(localDateTimeValue);
   const [enabledCategories, setEnabledCategories] = useState(new Set(CATEGORIES));
@@ -114,13 +115,9 @@ export default function RefugesPage() {
     );
   }, []);
 
+  // AC1: ask for the location on load rather than waiting for a button press.
   useEffect(() => {
-    let cancelled = false;
-    if (!globalThis.navigator.permissions?.query) return undefined;
-    globalThis.navigator.permissions.query({ name: "geolocation" }).then((result) => {
-      if (!cancelled && result.state === "granted") requestBrowserLocation();
-    }).catch(() => {});
-    return () => { cancelled = true; };
+    requestBrowserLocation();
   }, [requestBrowserLocation]);
 
   useEffect(() => {
@@ -182,16 +179,39 @@ export default function RefugesPage() {
     return () => controller.abort();
   }, [feedbackVersion, selectedId]);
 
-  function chooseManualLocation(event) {
+  // Geocodes through Nominatim, restricted to Melbourne so a search can't land overseas.
+  async function chooseManualLocation(event) {
     event.preventDefault();
-    const match = LOCATIONS.find((item) => item.label.toLowerCase() === manualQuery.trim().toLowerCase())
-      || LOCATIONS.find((item) => item.label.toLowerCase().includes(manualQuery.trim().toLowerCase()));
-    if (!match) {
-      setLocationNotice("That address is outside the controlled Melbourne location list. Choose a suggested suburb or select a point on the map.");
-      return;
+    const query = manualQuery.trim();
+    if (!query) return;
+
+    setSearchingLocation(true);
+    setLocationNotice("Searching…");
+    try {
+      const parameters = new globalThis.URLSearchParams({
+        q: `${query}, Melbourne, Victoria, Australia`,
+        format: "jsonv2",
+        limit: "1",
+        countrycodes: "au",
+        "accept-language": "en",
+      });
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?${parameters}`);
+      if (!response.ok) throw new Error(`Location search failed with status ${response.status}`);
+
+      const [match] = await response.json();
+      if (!match) {
+        setLocationNotice(`We couldn't find "${query}" in Melbourne. Try another suburb or landmark, or select a point on the map.`);
+        return;
+      }
+
+      const label = match.display_name?.split(",")[0]?.trim() || query;
+      setLocation({ label, latitude: Number(match.lat), longitude: Number(match.lon) });
+      setLocationNotice(`${label} selected.`);
+    } catch {
+      setLocationNotice("Location search is unavailable right now. Try again, or select a point on the map.");
+    } finally {
+      setSearchingLocation(false);
     }
-    setLocation(match);
-    setLocationNotice(`${match.label} selected manually.`);
   }
 
   function toggleCategoryGroup(categories) {
@@ -261,7 +281,7 @@ export default function RefugesPage() {
           <button type="button" className="current-location-button" onClick={requestBrowserLocation} disabled={locationLoading}><span>{locationLoading ? "Finding your location…" : location?.label || "Use my current location"}</span><span aria-hidden="true">◎</span></button>
           <form className="manual-location-form refuge-manual-location" onSubmit={chooseManualLocation}>
             <label htmlFor="manual-location">Search suburb or landmark</label>
-            <div><input id="manual-location" list="melbourne-locations" value={manualQuery} onChange={(event) => setManualQuery(event.target.value)} /><button type="submit">Use selected location</button></div>
+            <div><input id="manual-location" list="melbourne-locations" value={manualQuery} onChange={(event) => setManualQuery(event.target.value)} placeholder="e.g. Fitzroy, or 328 Swanston Street" /><button type="submit" disabled={searchingLocation}>{searchingLocation ? "Searching…" : "Use selected location"}</button></div>
             <datalist id="melbourne-locations">{LOCATIONS.map((item) => <option key={item.label} value={item.label} />)}</datalist>
           </form>
           <p className="location-status" role="status" aria-live="polite">{location ? `Search centre: ${location.label}.` : "No location selected yet."} {locationNotice}</p>
