@@ -274,7 +274,7 @@ export default function RefugesPage() {
         </section>
 
         <div className="refuge-map-area">
-          <PointMapPanel title="Nearby refuges" points={mapPoints} selectedId={selectedId} onSelect={selectRefuge} onChooseLocation={chooseMapLocation} label="Sensory refuge map" legend="Green Park · Blue Library · Purple Quiet space. Selected markers have a dark outline." />
+          <PointMapPanel title="Nearby refuges" points={mapPoints} selectedId={selectedId} onSelect={selectRefuge} onChooseLocation={chooseMapLocation} userLocation={location} label="Sensory refuge map" legend="Green Park · Blue Library · Purple Quiet space. Your location is the dark marker. Selected markers have a dark outline." />
         </div>
 
         <section className="refuge-results glass-panel" aria-labelledby="refuge-results-heading">
