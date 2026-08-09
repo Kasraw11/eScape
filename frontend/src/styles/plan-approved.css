@@ -117,7 +117,7 @@
 .map-preview__toolbar {
   position: absolute;
   z-index: 6;
-  top: 14px;
+  top: 86px;
   right: 14px;
   left: 14px;
   display: flex;
@@ -127,7 +127,13 @@
   pointer-events: none;
 }
 .map-preview__toolbar > * { pointer-events: auto; }
+.map-preview__crowd-control { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--surface-border); padding: 13px 16px; background: var(--surface); }
+.map-preview__crowd-control p { margin: 0; color: var(--text-muted); font-size: 0.78rem; text-align: right; }
 .map-preview__actions { display: flex; align-items: center; gap: 8px; }
+.crowd-area-toggle { min-height: 42px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid rgba(210, 145, 34, 0.42); border-radius: 12px; padding: 8px 12px; color: var(--text-primary); background: rgba(255, 255, 255, 0.94); box-shadow: 0 6px 20px rgba(30, 50, 90, 0.1); cursor: pointer; font-weight: 750; }
+.crowd-area-toggle[aria-pressed="true"] { border-color: #c98416; background: #fff4dc; }
+.crowd-area-toggle:disabled { opacity: 0.55; cursor: not-allowed; }
+.crowd-area-toggle__swatch { width: 14px; height: 14px; flex: 0 0 14px; border-radius: 50%; background: rgba(217, 79, 79, 0.5); box-shadow: 0 0 0 5px rgba(216, 155, 43, 0.18); }
 .map-preview__actions .icon-button { width: 46px; height: 46px; border-radius: 13px; background: rgba(255, 255, 255, 0.94); box-shadow: 0 6px 20px rgba(30, 50, 90, 0.12); }
 .map-preview__toolbar .map-detail-tabs {
   display: grid;
@@ -311,10 +317,13 @@
   .journey-panel { padding: 24px 18px 18px; }
   .journey-panel .journey-form { margin-top: 24px; }
   .journey-panel .travel-mode__options { grid-template-columns: 1fr 1.25fr; }
-  .map-preview__toolbar { top: 10px; right: 10px; left: 10px; }
+  .map-preview__toolbar { top: 82px; right: 10px; left: 10px; }
+  .map-preview__crowd-control { min-height: 72px; align-items: flex-start; padding: 12px; }
+  .map-preview__crowd-control p { max-width: 48%; font-size: 0.68rem; }
   .map-preview .route-legend { gap: 8px; padding: 9px; }
   .map-preview .route-legend span { font-size: 0.65rem; }
   .map-preview__actions .map-detail-tabs { display: none; }
+  .crowd-area-toggle { min-height: 44px; padding-inline: 10px; }
   .map-preview__actions .icon-button { width: 44px; height: 44px; }
   .plan-page .map-preview,
   .map-preview__interactive,

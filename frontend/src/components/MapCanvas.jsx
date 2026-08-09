@@ -5,6 +5,7 @@ import {
   MapContainer,
   TileLayer,
   Polyline,
+  Circle,
   CircleMarker,
   Popup,
   useMap,
@@ -75,18 +76,25 @@ export default function MapCanvas({
   routes = [],
   selectedRouteIdentifier,
   onSelectRoute,
+  showCrowdAreas = false,
   expanded = false,
 }) {
   const selectedRoute = routes.find(
     (route) => route.route_identifier === selectedRouteIdentifier
   );
-  const matchedSensors = Array.from(
-    new Map(
-      (selectedRoute?.route_segments || [])
-        .flatMap((segment) => segment.matched_sensors || [])
-        .map((sensor) => [sensor.sensor_id, sensor])
-    ).values()
-  );
+  const matchedSensors = Array.from((selectedRoute?.route_segments || []).reduce(
+    (sensors, segment) => {
+      (segment.matched_sensors || []).forEach((sensor) => {
+        const current = sensors.get(sensor.sensor_id);
+        const congestionLevel = segment.congestion_level || "unavailable";
+        if (!current || crowdSeverity(congestionLevel) > crowdSeverity(current.congestionLevel)) {
+          sensors.set(sensor.sensor_id, { ...sensor, congestionLevel });
+        }
+      });
+      return sensors;
+    },
+    new Map()
+  ).values());
 
   return (
         <div
@@ -121,6 +129,32 @@ export default function MapCanvas({
           routes={routes}
           expanded={expanded}
         />
+
+        {showCrowdAreas && matchedSensors.map((sensor) => {
+          if (!CROWD_AREA_COLORS[sensor.congestionLevel]) return null;
+          const count = Number(sensor.pedestrian_count);
+          const radius = Number.isFinite(count)
+            ? Math.min(140, 55 + Math.sqrt(Math.max(count, 0)) * 4)
+            : 65;
+          return (
+            <Circle
+              key={`crowd-area-${sensor.sensor_id}`}
+              center={[sensor.latitude, sensor.longitude]}
+              radius={radius}
+              interactive={false}
+              pathOptions={{
+                color: CROWD_AREA_COLORS[sensor.congestionLevel],
+                weight: 0,
+                fillColor: CROWD_AREA_COLORS[sensor.congestionLevel],
+                fillOpacity: sensor.congestionLevel === "high"
+                  ? 0.3
+                  : sensor.congestionLevel === "low"
+                    ? 0.18
+                    : 0.24,
+              }}
+            />
+          );
+        })}
 
         {routes.map((route) => {
           const selected =
@@ -202,3 +236,22 @@ const CROWD_COLORS = {
   moderate: "#b7791f",
   high: "#c53030",
 };
+
+const CROWD_AREA_COLORS = {
+  low: "#3f9b78",
+  medium: "#d89b2b",
+  moderate: "#d89b2b",
+  high: "#d94f4f",
+};
+
+const CROWD_SEVERITY = {
+  unavailable: 0,
+  low: 1,
+  medium: 2,
+  moderate: 2,
+  high: 3,
+};
+
+function crowdSeverity(level) {
+  return CROWD_SEVERITY[level] || 0;
+}

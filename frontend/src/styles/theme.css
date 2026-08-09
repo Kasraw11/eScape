@@ -92,6 +92,7 @@ button { transition: background-color 150ms ease, color 150ms ease, border-color
 [data-theme="dark"] .journey-panel .travel-mode__option,
 [data-theme="dark"] .crowd-tolerance__options,
 [data-theme="dark"] .map-preview__actions .icon-button,
+[data-theme="dark"] .crowd-area-toggle,
 [data-theme="dark"] .map-detail-tabs,
 [data-theme="dark"] .route-card,
 [data-theme="dark"] .alternative-card,
@@ -127,6 +128,7 @@ button { transition: background-color 150ms ease, color 150ms ease, border-color
 [data-theme="dark"] .feature-card__icon { background: rgba(90, 115, 235, 0.14); }
 [data-theme="dark"] .plan-page > .plan-tabs button[aria-selected="true"],
 [data-theme="dark"] .map-detail-tabs button[aria-selected="true"],
+[data-theme="dark"] .crowd-area-toggle[aria-pressed="true"],
 [data-theme="dark"] .crowd-tolerance__options button[aria-pressed="true"],
 [data-theme="dark"] .theme-control button[aria-pressed="true"] { color: var(--primary-hover); background: var(--primary-soft); }
 [data-theme="dark"] .journey-panel .travel-mode__option--selected { color: var(--low); background: var(--low-background); }

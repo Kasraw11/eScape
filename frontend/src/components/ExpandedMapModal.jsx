@@ -27,6 +27,7 @@ export default function ExpandedMapModal({
   routes,
   selectedRouteIdentifier,
   onSelectRoute,
+  showCrowdAreas = false,
   returnFocusRef,
 }) {
   const dialogRef = useRef(null);
@@ -176,6 +177,7 @@ export default function ExpandedMapModal({
               selectedRouteIdentifier
             }
             onSelectRoute={onSelectRoute}
+            showCrowdAreas={showCrowdAreas}
             expanded
           />
         </div>

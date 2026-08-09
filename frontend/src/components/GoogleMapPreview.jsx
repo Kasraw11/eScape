@@ -26,8 +26,27 @@ function recommendationPoints(route) {
 export default function GoogleMapPreview({ routes = [], selectedRouteIdentifier, onSelectRoute }) {
   const [expanded, setExpanded] = useState(false);
   const [activeView, setActiveView] = useState("map");
+  const [showCrowdAreas, setShowCrowdAreas] = useState(false);
   const expandButtonRef = useRef(null);
   const selectedRoute = routes.find((route) => route.route_identifier === selectedRouteIdentifier);
+  const hasSensorAreas = (selectedRoute?.route_segments || []).some(
+    (segment) => (segment.matched_sensors || []).length > 0
+  );
+  const hasBusyAreas = (selectedRoute?.route_segments || []).some(
+    (segment) => ["medium", "moderate", "high"].includes(segment.congestion_level)
+      && (segment.matched_sensors || []).length > 0
+  );
+  const crowdAreaStatus = !selectedRoute
+    ? "Plan a route to load live crowd areas."
+    : !hasSensorAreas
+      ? "No live sensor areas are available for this route."
+      : hasBusyAreas
+      ? showCrowdAreas
+        ? "Green is low, amber is moderate, and red is high crowding."
+        : "Crowd-level sensor areas are available for this route."
+      : showCrowdAreas
+        ? "All matched sensor areas are currently low crowding."
+        : "Matched sensors currently report low crowding.";
   const openExpandedMap = useCallback(() => setExpanded(true), []);
   const closeExpandedMap = useCallback(() => setExpanded(false), []);
 
@@ -35,16 +54,20 @@ export default function GoogleMapPreview({ routes = [], selectedRouteIdentifier,
     <section className="map-preview glass-panel" aria-labelledby="map-preview-title">
       <h2 className="sr-only" id="map-preview-title">Map and details</h2>
       <p className="sr-only" aria-live="polite">{selectedRoute ? `${selectedRoute.route_identifier} selected` : "Select a route to compare"}</p>
+      <div className="map-preview__crowd-control">
+        <button className="crowd-area-toggle" type="button" aria-pressed={showCrowdAreas} onClick={() => setShowCrowdAreas((visible) => !visible)}><span className="crowd-area-toggle__swatch" aria-hidden="true" /><span>{showCrowdAreas ? "Hide crowd areas" : "Show crowd areas"}</span></button>
+        <p role="status" aria-live="polite">{crowdAreaStatus}</p>
+      </div>
       <div className="map-preview__toolbar">
         <RouteLegend />
         <div className="map-preview__actions"><div className="map-detail-tabs" role="tablist" aria-label="Route map and details"><button type="button" role="tab" aria-selected={activeView === "map"} onClick={() => setActiveView("map")}>Map</button><button type="button" role="tab" aria-selected={activeView === "details"} onClick={() => setActiveView("details")}>Details</button></div><button className="icon-button" type="button" onClick={openExpandedMap} ref={expandButtonRef} aria-label="Expand route map"><span aria-hidden="true">↗</span></button></div>
       </div>
       <div role="tabpanel" hidden={activeView !== "map"}>
-        <div className="map-preview__interactive" aria-label="Open expanded route map" onClick={openExpandedMap}><MapCanvas routes={routes} selectedRouteIdentifier={selectedRouteIdentifier} onSelectRoute={onSelectRoute} /><span className="map-preview__hint">Expand map</span></div>
+        <div className="map-preview__interactive" aria-label="Open expanded route map" onClick={openExpandedMap}><MapCanvas routes={routes} selectedRouteIdentifier={selectedRouteIdentifier} onSelectRoute={onSelectRoute} showCrowdAreas={showCrowdAreas} /><span className="map-preview__hint">Expand map</span></div>
         {routes.length ? <div className="map-route-selector" aria-label="Map route selector">{routes.slice(0, 3).map((route, index) => <button type="button" key={`${route.route_identifier}-${index}`} className={route.route_identifier === selectedRouteIdentifier ? "map-route-selector__button--active" : ""} onClick={() => onSelectRoute?.(route.route_identifier)}>Route {index + 1}{route.is_recommended ? " · Recommended" : ""}</button>)}</div> : null}
       </div>
       <div className="route-detail-view" role="tabpanel" hidden={activeView !== "details"}>{selectedRoute ? <><div className="route-detail-view__headline"><div><h3>{selectedRoute.route_identifier}</h3><p>{selectedRoute.estimated_travel_minutes} min · {selectedRoute.travel_mode === "transit" ? "Public transport" : "Walking"}</p></div><SensoryIndicator indicator={selectedRoute.sensory_indicator} /></div><p>{selectedRoute.threshold_exceeded ? "Crowd level is above your tolerance." : "Crowd level is within your tolerance."}</p><section className="route-reasoning" aria-labelledby="route-reasoning-title"><h3 id="route-reasoning-title">Why this route is recommended</h3><ul>{recommendationPoints(selectedRoute).map((point) => <li key={point}>{point}</li>)}</ul></section></> : <p>Select a route to see its details.</p>}</div>
-      <ExpandedMapModal open={expanded} onClose={closeExpandedMap} routes={routes} selectedRouteIdentifier={selectedRouteIdentifier} onSelectRoute={onSelectRoute} returnFocusRef={expandButtonRef} />
+      <ExpandedMapModal open={expanded} onClose={closeExpandedMap} routes={routes} selectedRouteIdentifier={selectedRouteIdentifier} onSelectRoute={onSelectRoute} showCrowdAreas={showCrowdAreas} returnFocusRef={expandButtonRef} />
     </section>
   );
 }
