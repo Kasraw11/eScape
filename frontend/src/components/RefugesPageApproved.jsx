@@ -72,6 +72,16 @@ export default function RefugesPage() {
   const [feedbackNotice, setFeedbackNotice] = useState("");
   const leaveFeedbackRef = useRef(null);
 
+  const detailRef = useRef(null);
+  const scrollToDetailRef = useRef(false);
+
+  useEffect(() => {
+    if (!scrollToDetailRef.current || !selectedId || !detailRef.current) return;
+    scrollToDetailRef.current = false;
+    const reduceMotion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    detailRef.current.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+  }, [selectedId]);
+
   // AC7: the user must be able to retry after a failed lookup
   const locationRequestInFlight = useRef(false);
 
@@ -196,6 +206,7 @@ export default function RefugesPage() {
   const selectRefuge = useCallback(async (refugeOrId) => {
     const refuge = typeof refugeOrId === "object" ? refugeOrId : visibleRefuges.find((item) => String(item.refuge_id) === String(refugeOrId));
     if (!refuge) return;
+    scrollToDetailRef.current = true;
     setSelectedId(refuge.refuge_id);
     setDetails(null);
     setDirectionsMessage("");
@@ -294,7 +305,7 @@ export default function RefugesPage() {
           ))}</div>
         </section>
 
-        {selected ? <section className="detail-panel refuge-detail glass-panel" aria-labelledby="refuge-detail-heading">
+        {selected ? <section ref={detailRef} className="detail-panel refuge-detail glass-panel" aria-labelledby="refuge-detail-heading" tabIndex={-1}>
           <div className="refuge-detail__heading"><div><p className="section-kicker">Selected refuge</p><h2 id="refuge-detail-heading">{selected.name}</h2><p>{selected.category} · {distanceLabel(selected.distance_m)}</p></div><span className={`opening-badge opening-badge--${selected.opening_status}`}>{openingLabel(selected.opening_status)}</span></div>
           <p className="refuge-detail__description">{selected.sensory_suitability_description || "Description unavailable"}</p>
           <dl className="refuge-detail__facts">
