@@ -7,13 +7,14 @@ eScape brings route and sensory information together to help users identify calm
 Backend `.env` values:
 
 ```env
-DATABASE_URL=postgresql+psycopg://USERNAME:PASSWORD@localhost:5432/escape_db
-GOOGLE_MAPS_API_KEY=
+DATABASE_URL=mysql+pymysql://avnadmin:PASTE_AIVEN_PASSWORD_HERE@escape-mysql-escapedb.l.aivencloud.com:22620/escape_db?ssl_verify_cert=false
+GOOGLE_MAPS_API_KEY=PASTE_GOOGLE_MAPS_SERVER_KEY_HERE
 BACKEND_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 PEDESTRIAN_LIVE_WINDOW_SECONDS=120
 PEDESTRIAN_RECENT_WINDOW_SECONDS=600
 CONGESTION_POLL_INTERVAL_SECONDS=90
 MELBOURNE_PEDESTRIAN_API_URL=https://data.melbourne.vic.gov.au/api/explore/v2.1/catalog/datasets/pedestrian-counting-system-past-hour-counts-per-minute/records
+MELBOURNE_SENSOR_LOCATIONS_API_URL=https://data.melbourne.vic.gov.au/api/explore/v2.1/catalog/datasets/pedestrian-counting-system-sensor-locations/records
 MELBOURNE_LANDMARKS_API_URL=https://data.melbourne.vic.gov.au/api/explore/v2.1/catalog/datasets/landmarks-and-places-of-interest-including-schools-theatres-health-services-spor/records
 MELBOURNE_ENVIRONMENTAL_ASSETS_API_URL=https://data.melbourne.vic.gov.au/api/explore/v2.1/catalog/datasets/assets-for-environmental-reporting/records
 PREDICTION_MODEL_VERSION=transparent-trend-v1
@@ -23,10 +24,20 @@ PREDICTION_DEFAULT_HORIZON_MINUTES=60
 Frontend `.env` values:
 
 ```env
-NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY=
+NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY=PASTE_YOUR_BROWSER_KEY_HERE
 NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
 NEXT_PUBLIC_CONGESTION_POLL_INTERVAL_MS=90000
 ```
+
+Do not commit real Aiven passwords or Google API keys. Keep secrets only in local
+`backend/.env` and `frontend/.env.local` files. The committed `.env.example`
+files show the required variable names and placeholder values.
+
+For Google Maps, use a browser key for `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY`
+and a server/backend key for `GOOGLE_MAPS_API_KEY` if backend Google services are
+enabled. Restrict the browser key to local development origins such as
+`http://localhost:3000/*` and `http://127.0.0.1:3000/*`, and restrict both keys
+to only the APIs the current branch needs.
 
 ## Backend
 

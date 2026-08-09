@@ -3,8 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, Identity, Index, Integer, SmallInteger, true
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, Identity, Index, Integer, SmallInteger, Uuid, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -22,7 +21,7 @@ class UserPreference(Base):
     )
 
     preference_id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
-    session_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, unique=True)
+    session_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False, unique=True)
     preferred_crowd_threshold: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     notifications_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=true())
     search_radius_m: Mapped[int] = mapped_column(Integer, nullable=False)

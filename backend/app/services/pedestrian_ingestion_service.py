@@ -67,6 +67,37 @@ class MelbournePedestrianClient:
             raise MelbournePedestrianDataError("Melbourne pedestrian data response was invalid")
         return records
 
+    async def fetch_records(self, max_records: int = 1000) -> list[dict[str, Any]]:
+        records: list[dict[str, Any]] = []
+        offset = 0
+        limit = settings.melbourne_pedestrian_api_limit
+
+        async with httpx.AsyncClient(timeout=settings.melbourne_pedestrian_api_timeout_seconds) as client:
+            while len(records) < max_records:
+                batch_limit = min(limit, max_records - len(records))
+                response = await client.get(
+                    settings.melbourne_pedestrian_api_url,
+                    params={
+                        "order_by": "sensing_datetime desc",
+                        "limit": batch_limit,
+                        "offset": offset,
+                        "timezone": "UTC",
+                    },
+                )
+                response.raise_for_status()
+                payload = response.json()
+                batch = payload.get("results") if isinstance(payload, dict) else None
+                if not isinstance(batch, list):
+                    raise MelbournePedestrianDataError("Melbourne pedestrian data response was invalid")
+                records.extend(batch)
+
+                total_count = payload.get("total_count", offset + len(batch))
+                offset += len(batch)
+                if not batch or offset >= total_count:
+                    break
+
+        return records
+
 
 class PedestrianIngestionService:
     def __init__(self, db: Session) -> None:
@@ -74,7 +105,7 @@ class PedestrianIngestionService:
 
     def ingest(self, raw_records: list[dict[str, Any]]) -> IngestionStats:
         stats = IngestionStats()
-        latest_by_sensor: dict[int, ValidatedPedestrianReading] = {}
+        readings: list[ValidatedPedestrianReading] = []
 
         for raw_record in raw_records:
             try:
@@ -82,56 +113,49 @@ class PedestrianIngestionService:
             except (KeyError, TypeError, ValueError):
                 stats.invalid += 1
                 continue
-            existing_latest = latest_by_sensor.get(reading.sensor_id)
-            if existing_latest is None or reading.sensed_at > existing_latest.sensed_at:
-                latest_by_sensor[reading.sensor_id] = reading
-            else:
-                stats.skipped += 1
+            readings.append(reading)
 
-        for reading in latest_by_sensor.values():
-            sensor = self.db.get(SensorLocation, reading.sensor_id)
-            if sensor is None:
+        if not readings:
+            return stats
+
+        sensor_ids = sorted({reading.sensor_id for reading in readings})
+        valid_sensor_ids = set(
+            self.db.scalars(
+                select(SensorLocation.sensor_id).where(SensorLocation.sensor_id.in_(sensor_ids))
+            ).all()
+        )
+        existing_keys = {
+            (int(sensor_id), ensure_aware(sensed_at))
+            for sensor_id, sensed_at in self.db.execute(
+                select(RealtimePedestrianCount.sensor_id, RealtimePedestrianCount.sensed_at).where(
+                    RealtimePedestrianCount.sensor_id.in_(sensor_ids)
+                )
+            ).all()
+        }
+
+        for reading in readings:
+            if reading.sensor_id not in valid_sensor_ids:
                 stats.skipped += 1
                 continue
-            sensor_updated_at = ensure_aware(getattr(sensor, "last_updated_at", None))
-            if sensor_updated_at is None or reading.sensed_at > sensor_updated_at:
-                sensor.last_updated_at = reading.sensed_at
 
-            existing = self.db.scalar(
-                select(RealtimePedestrianCount).where(
-                    RealtimePedestrianCount.sensor_id == reading.sensor_id,
-                    RealtimePedestrianCount.sensed_at == reading.sensed_at,
-                )
-            )
-            if existing is None:
-                self.db.add(
-                    RealtimePedestrianCount(
-                        sensor_id=reading.sensor_id,
-                        sensed_at=reading.sensed_at,
-                        direction_1_count=reading.direction_1_count,
-                        direction_2_count=reading.direction_2_count,
-                        total_count=reading.total_count,
-                        source_record_id=reading.source_record_id,
-                        data_source=MELBOURNE_REALTIME_DATA_SOURCE,
-                    )
-                )
-                stats.inserted += 1
+            existing_key = (reading.sensor_id, ensure_aware(reading.sensed_at))
+            if existing_key in existing_keys:
+                stats.skipped += 1
                 continue
 
-            changed = any(
-                getattr(existing, field) != getattr(reading, field)
-                for field in ("direction_1_count", "direction_2_count", "total_count", "source_record_id")
+            self.db.add(
+                RealtimePedestrianCount(
+                    sensor_id=reading.sensor_id,
+                    sensed_at=reading.sensed_at,
+                    direction_1_count=reading.direction_1_count,
+                    direction_2_count=reading.direction_2_count,
+                    total_count=reading.total_count,
+                    source_record_id=reading.source_record_id,
+                    data_source=MELBOURNE_REALTIME_DATA_SOURCE,
+                )
             )
-            changed = changed or getattr(existing, "data_source", None) != MELBOURNE_REALTIME_DATA_SOURCE
-            if changed:
-                existing.direction_1_count = reading.direction_1_count
-                existing.direction_2_count = reading.direction_2_count
-                existing.total_count = reading.total_count
-                existing.source_record_id = reading.source_record_id
-                existing.data_source = MELBOURNE_REALTIME_DATA_SOURCE
-                stats.updated += 1
-            else:
-                stats.skipped += 1
+            existing_keys.add(existing_key)
+            stats.inserted += 1
 
         return stats
 

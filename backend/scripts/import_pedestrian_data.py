@@ -134,8 +134,15 @@ def validate_row(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def upsert_sensor(db: Session, row: dict[str, Any], stats: ImportStats) -> SensorLocation:
-    sensor = db.get(SensorLocation, row["sensor_id"])
+def upsert_sensor(
+    db: Session,
+    row: dict[str, Any],
+    stats: ImportStats,
+    sensor_cache: dict[int, SensorLocation],
+) -> SensorLocation:
+    sensor = sensor_cache.get(row["sensor_id"])
+    if sensor is None:
+        sensor = db.get(SensorLocation, row["sensor_id"])
     sensor_values = {
         "sensor_name": row["sensor_name"],
         "description": row["description"],
@@ -153,10 +160,12 @@ def upsert_sensor(db: Session, row: dict[str, Any], stats: ImportStats) -> Senso
 
     if sensor is None:
         sensor = SensorLocation(sensor_id=row["sensor_id"], **sensor_values)
+        sensor_cache[row["sensor_id"]] = sensor
         db.add(sensor)
         stats.sensors_inserted += 1
         return sensor
 
+    sensor_cache[row["sensor_id"]] = sensor
     changed = False
     for key, value in sensor_values.items():
         if getattr(sensor, key) != value:
@@ -201,12 +210,13 @@ def import_rows(input_path: Path) -> ImportStats:
 
     stats = ImportStats()
     rows = load_rows(input_path)
+    sensor_cache: dict[int, SensorLocation] = {}
 
     with SessionLocal() as db:
         for raw_row in rows:
             try:
                 row = validate_row(raw_row)
-                upsert_sensor(db, row, stats)
+                upsert_sensor(db, row, stats, sensor_cache)
                 insert_count_if_missing(db, row, stats)
             except Exception as exc:
                 stats.invalid_rows += 1
