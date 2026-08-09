@@ -46,6 +46,8 @@ class Settings(BaseSettings):
 
     melbourne_refuge_api_timeout_seconds: float = 20.0
     melbourne_refuge_api_limit: int = 100
+    osm_overpass_api_url: str = "https://overpass-api.de/api/interpreter"
+    osm_opening_hours_enrichment_enabled: bool = True
 
     prediction_model_version: str = "transparent-trend-v1"
     prediction_default_horizon_minutes: int = 60

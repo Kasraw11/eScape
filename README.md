@@ -110,6 +110,13 @@ In production, invoke this same idempotent command from the platform scheduler a
 - **Landmarks and places of interest**: only the explicit `Informal Outdoor Facility (Park/Garden/Reserve)` sub-theme and explicitly named libraries.
 - **Assets for environmental reporting**: only `Library Facilities` records.
 
+The import optionally enriches conservatively matched parks and libraries with `opening_hours` data from OpenStreetMap's
+Overpass API. Only parseable schedules from nearby, similarly named places are stored; unmatched or complex schedules
+remain explicitly unavailable rather than being guessed. Set `OSM_OPENING_HOURS_ENRICHMENT_ENABLED=false` to disable it.
+For a small set of high-value refuges, `backend/app/data/refuge_hours_overrides.py` provides reviewed fallback schedules
+when the open dataset is incomplete. These overrides are applied by normalized refuge name after OSM enrichment and should
+remain deliberately small; update or remove an entry whenever its hours can no longer be confirmed.
+
 Generic community assets, sporting facilities, retail places, and other uncertain categories are skipped. Imported records are described as **potential quiet spaces** and never as certified or guaranteed quiet. The import validates coordinates, generates a stable source identifier when one is absent, prevents duplicates, preserves existing data on external failure, and reports inserted, updated, skipped, and invalid totals.
 
 ```powershell

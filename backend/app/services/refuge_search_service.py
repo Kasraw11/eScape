@@ -56,6 +56,13 @@ def opening_status(opening_hours: str | None, selected: datetime) -> tuple[str, 
 
 
 def _hours_summary(schedule: dict[str, Any]) -> str:
+    all_periods = [schedule.get(day) for day in ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")]
+    if all(periods == [["00:00", "23:59"]] for periods in all_periods):
+        return "Open 24 hours daily"
+    if all_periods[0] and all(periods == all_periods[0] for periods in all_periods):
+        periods = ", ".join(f"{period[0]}–{period[1]}" for period in all_periods[0])
+        return f"Daily {periods}"
+
     parts = []
     for day in ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"):
         periods = schedule.get(day)
