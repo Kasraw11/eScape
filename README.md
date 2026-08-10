@@ -2,6 +2,16 @@
 
 eScape brings route and sensory information together to help users identify calmer Melbourne CBD routes, receive warnings about potential stressors, and locate calmer alternatives.
 
+## Start after a reboot
+
+After the initial environment setup is complete, run this command from the repository root:
+
+```powershell
+.\start-escape.cmd
+```
+
+The launcher starts Docker Desktop when required, brings up MySQL and OSRM, checks FastAPI and Next.js, and creates a temporary Cloudflare public URL. Keep the PC running while using that URL. Cloudflare issues a new temporary URL after the tunnel or PC stops.
+
 ## Environment
 
 Backend `.env` values:
@@ -26,6 +36,8 @@ Frontend `.env` values:
 NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY=
 NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
 NEXT_PUBLIC_CONGESTION_POLL_INTERVAL_MS=90000
+NEXT_PUBLIC_EMERGENCY_PHONE=000
+NEXT_PUBLIC_TRUSTED_CONTACT_PHONE=
 ```
 
 ## Backend
