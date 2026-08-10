@@ -8,6 +8,7 @@ import {
   refugeDetailsUrl,
   refugeFeedbackSummaryUrl,
   refugeFeedbackUrl,
+  routeAlternativeUrl,
   routeCongestionUrl,
 } from "../config/api.js";
 
@@ -27,8 +28,11 @@ function responseErrorMessage(response, payload) {
   const message = typeof payload?.message === "string" ? payload.message : null;
 
   if (response.status === 422)
-    return detail || message ||
-      "The backend rejected the journey details. Check the origin and destination.";
+    return (
+      detail ||
+      message ||
+      "The backend rejected the journey details. Check the origin, destination, and crowd tolerance."
+    );
 
   if (response.status === 404) return detail || message || "The local route-planning endpoint was not found.";
   if (response.status === 502) return detail || message || "The external route provider is unavailable.";
@@ -64,21 +68,89 @@ export async function planRoute(payload) {
   return data;
 }
 
-export async function getRouteCongestion(routeId, { signal } = {}) {
+export async function getRouteCongestion(
+  routeId,
+  { signal } = {}
+) {
   let response;
+
   try {
-    response = await fetch(routeCongestionUrl(routeId), {
-      method: "GET",
-      headers: { Accept: "application/json" },
-      signal,
-    });
+    response = await fetch(
+      routeCongestionUrl(routeId),
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+        signal,
+      }
+    );
   } catch (error) {
-    if (error?.name === "AbortError") throw error;
-    throw new Error(`Unable to refresh congestion. Confirm FastAPI is running on ${API_BASE_URL}.`);
+    if (error?.name === "AbortError") {
+      throw error;
+    }
+
+    throw new Error(
+      `Unable to refresh congestion. Confirm FastAPI is running on ${API_BASE_URL}.`
+    );
   }
 
-  const data = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(responseErrorMessage(response, data));
+  const data = await response
+    .json()
+    .catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(
+      responseErrorMessage(
+        response,
+        data
+      )
+    );
+  }
+
+  return data;
+}
+
+export async function getCalmerAlternative(
+  routeId,
+  { signal } = {}
+) {
+  let response;
+
+  try {
+    response = await fetch(
+      routeAlternativeUrl(routeId),
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+        signal,
+      }
+    );
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw error;
+    }
+
+    throw new Error(
+      `Unable to check alternative routes. Confirm FastAPI is running on ${API_BASE_URL}.`
+    );
+  }
+
+  const data = await response
+    .json()
+    .catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(
+      responseErrorMessage(
+        response,
+        data
+      )
+    );
+  }
+
   return data;
 }
 

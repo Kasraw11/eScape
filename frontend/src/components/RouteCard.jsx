@@ -1,6 +1,3 @@
-import SensoryIndicator from "./SensoryIndicator.jsx";
-
-
 function totalDistance(route) {
   const metres = (
     route.route_segments || []
@@ -59,6 +56,57 @@ function levelLabel(value) {
 }
 
 
+function freshnessLabel(value) {
+  const normalized = String(
+    value || ""
+  ).toLowerCase();
+
+  if (normalized === "fresh") {
+    return "Fresh";
+  }
+
+  if (normalized === "stale") {
+    return "Stale";
+  }
+
+  if (normalized === "historical") {
+    return "Historical";
+  }
+
+  return "Unavailable";
+}
+
+
+function confidenceLabel(
+  coverage,
+  freshness
+) {
+  const normalizedFreshness =
+    String(
+      freshness || ""
+    ).toLowerCase();
+
+  if (
+    coverage >= 90 &&
+    normalizedFreshness === "fresh"
+  ) {
+    return "High";
+  }
+
+  if (
+    coverage >= 50 &&
+    (
+      normalizedFreshness === "fresh" ||
+      normalizedFreshness === "stale"
+    )
+  ) {
+    return "Moderate";
+  }
+
+  return "Low";
+}
+
+
 function updatedLabel(value) {
   if (!value) {
     return null;
@@ -91,16 +139,20 @@ function SensoryRow({
     normalized === "Low"
       ? 2
       : normalized === "Moderate"
-        ? 3
-        : normalized === "High"
-          ? 4
-          : 0;
+      ? 3
+      : normalized === "High"
+      ? 5
+      : 0;
 
   return (
-    <div className="route-card__sensory-row">
-      <strong>{label}:</strong>
+    <div className="sensory-row">
+      <strong>
+        {label}:
+      </strong>{" "}
 
-      <span>{normalized}</span>
+      <span>
+        {normalized}
+      </span>
 
       {strength > 0 && (
         <span
@@ -145,13 +197,13 @@ export default function RouteCard({
       100
   );
 
-  const highSegments = (
+  const lowSegments = (
     route.route_segments || []
   ).filter(
     (segment) =>
       String(
         segment.congestion_level || ""
-      ).toLowerCase() === "high"
+      ).toLowerCase() === "low"
   ).length;
 
   const moderateSegments = (
@@ -167,46 +219,64 @@ export default function RouteCard({
     );
   }).length;
 
-  const lowSegments = (
+  const highSegments = (
     route.route_segments || []
   ).filter(
     (segment) =>
       String(
         segment.congestion_level || ""
-      ).toLowerCase() === "low"
+      ).toLowerCase() === "high"
   ).length;
 
+  const freshness =
+    freshnessLabel(
+      route.data_freshness
+    );
+
+  const confidence =
+    confidenceLabel(
+      coverage,
+      route.data_freshness
+    );
+
   const limitedData =
+    route.sensory_score === null ||
+    route.sensory_score === undefined ||
     route.pedestrian_data_availability ===
       "unavailable" ||
     route.data_availability_status ===
       "unavailable" ||
+    coverage < 50;
+
+  const partialData =
+    !limitedData &&
     coverage < 100;
 
   const lastUpdated =
     updatedLabel(
-      route.updated_at ||
-      route.observed_at
-    );
-
-  const sensoryLevel =
-    levelLabel(
-      route.sensory_indicator
+      route.observed_at ||
+        route.updated_at
     );
 
   const sensoryScore =
-    typeof route.sensory_score === "number"
+    typeof route.sensory_score ===
+    "number"
       ? route.sensory_score.toFixed(2)
       : "Unavailable";
 
+  const preferenceAvailable =
+    route.sensory_score !== null &&
+    route.sensory_score !== undefined;
 
   return (
     <article
       className={[
         "route-card",
+
         route.is_recommended
           ? "route-card--recommended"
           : "",
+
         selected
           ? "route-card--selected"
           : "",
@@ -214,13 +284,12 @@ export default function RouteCard({
         .filter(Boolean)
         .join(" ")}
     >
-
+      {/* Recommended route */}
       {route.is_recommended && (
         <div className="route-card__recommended">
-          ★ Recommended
+          ★ Recommended calmer route
         </div>
       )}
-
 
       <button
         className="route-card__select-surface"
@@ -236,7 +305,7 @@ export default function RouteCard({
           )
         }
       >
-
+        {/* Route heading */}
         <div className="route-card__header">
           <h3>
             {displayName(
@@ -262,10 +331,11 @@ export default function RouteCard({
           </div>
         </div>
 
+        {/* ------------------------------------------------------ */}
+        {/* Actual environmental crowd condition */}
+        {/* ------------------------------------------------------ */}
 
-        {/* Main sensory information */}
         <div className="route-card__sensory-summary">
-
           <SensoryRow
             label="Crowd level"
             value={
@@ -280,34 +350,90 @@ export default function RouteCard({
             {sensoryScore}
           </p>
 
-          <p>
-            <strong>
-              Crowd-data coverage:
-            </strong>{" "}
-            {coverage}%
-          </p>
+          {/* ---------------------------------------------------- */}
+          {/* User preference */}
+          {/* ---------------------------------------------------- */}
 
+          {preferenceAvailable && (
+            <p
+              className={
+                route.qualifies_preference
+                  ? "route-card__preference route-card__preference--meets"
+                  : "route-card__preference route-card__preference--exceeds"
+              }
+            >
+              <strong>
+                Your preference:
+              </strong>{" "}
+
+              {route.qualifies_preference
+                ? "✓ Meets your crowd preference"
+                : "⚠ Exceeds your crowd preference"}
+            </p>
+          )}
+
+          {/* ---------------------------------------------------- */}
+          {/* Data confidence */}
+          {/* ---------------------------------------------------- */}
+
+          <div className="route-card__data-confidence">
+            <p>
+              <strong>
+                Data confidence:
+              </strong>{" "}
+              {confidence}
+            </p>
+
+            <p>
+              <strong>
+                Data freshness:
+              </strong>{" "}
+              {freshness}
+            </p>
+
+            <p>
+              <strong>
+                Crowd-data coverage:
+              </strong>{" "}
+              {coverage}%
+            </p>
+          </div>
         </div>
 
+        {/* ------------------------------------------------------ */}
+        {/* Data warnings */}
+        {/* ------------------------------------------------------ */}
 
         {limitedData && (
           <p className="route-card__warning">
-            Limited sensory data
-            {coverage > 0
-              ? ` · ${coverage}% crowd-data coverage`
-              : ""}
+            ⚠ Sensory data is too limited
+            for a reliable recommendation.
           </p>
         )}
 
+        {partialData && (
+          <p className="route-card__warning">
+            ⚠ Partial sensory data ·{" "}
+            {coverage}% crowd-data coverage
+          </p>
+        )}
+
+        {route.warning_message && (
+          <p className="route-card__warning">
+            {route.warning_message}
+          </p>
+        )}
 
         <p className="route-card__selection-status">
           {selected
             ? "✓ Selected"
             : "Select route"}
         </p>
-
       </button>
 
+      {/* -------------------------------------------------------- */}
+      {/* Start journey */}
+      {/* -------------------------------------------------------- */}
 
       {selected && onStartJourney && (
         <button
@@ -323,6 +449,9 @@ export default function RouteCard({
         </button>
       )}
 
+      {/* -------------------------------------------------------- */}
+      {/* Details */}
+      {/* -------------------------------------------------------- */}
 
       <details className="route-card__details">
         <summary>
@@ -330,15 +459,16 @@ export default function RouteCard({
         </summary>
 
         <div className="route-card__details-content">
-
           <p>
-            <strong>Mode:</strong>{" "}
+            <strong>
+              Mode:
+            </strong>{" "}
+
             {route.travel_mode ===
             "transit"
               ? "Public transport"
               : "Walking"}
           </p>
-
 
           <p>
             <strong>
@@ -348,6 +478,7 @@ export default function RouteCard({
               0}
           </p>
 
+          <hr />
 
           <p>
             <strong>
@@ -356,14 +487,12 @@ export default function RouteCard({
             {lowSegments}
           </p>
 
-
           <p>
             <strong>
               Moderate-crowd sections:
             </strong>{" "}
             {moderateSegments}
           </p>
-
 
           <p>
             <strong>
@@ -372,32 +501,51 @@ export default function RouteCard({
             {highSegments}
           </p>
 
+          <hr />
 
           <p>
             <strong>
               Data freshness:
             </strong>{" "}
-            {route.data_freshness ||
-              "Unavailable"}
+            {freshness}
           </p>
 
+          <p>
+            <strong>
+              Data coverage:
+            </strong>{" "}
+            {coverage}%
+          </p>
+
+          <p>
+            <strong>
+              Data confidence:
+            </strong>{" "}
+            {confidence}
+          </p>
 
           {lastUpdated && (
-            <p>{lastUpdated}</p>
-          )}
-
-
-          {route.recommendation_explanation && (
-            <p className="route-card__explanation">
-              {
-                route.recommendation_explanation
-              }
+            <p>
+              {lastUpdated}
             </p>
           )}
 
+          {route.recommendation_explanation && (
+            <>
+              <hr />
+
+              <p className="route-card__explanation">
+                <strong>
+                  Why this route?
+                </strong>{" "}
+                {
+                  route.recommendation_explanation
+                }
+              </p>
+            </>
+          )}
         </div>
       </details>
-
     </article>
   );
 }

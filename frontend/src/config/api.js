@@ -59,6 +59,17 @@ export function routeCongestionUrl(routeId) {
 
 
 /**
+ * Builds the calmer-alternative endpoint
+ * for one active route.
+ */
+export function routeAlternativeUrl(routeId) {
+  return `${API_BASE_URL}/api/routes/${encodeURIComponent(
+    routeId
+  )}/alternative`;
+}
+
+
+/**
  * Builds the details endpoint for one refuge.
  */
 export function refugeDetailsUrl(refugeId) {

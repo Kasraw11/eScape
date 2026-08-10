@@ -239,3 +239,16 @@ frontend/coverage/
 frontend/.env.local
 frontend/npm-debug.log*
 *.tsbuildinfo
+
+
+
+# Local routing / map data
+routing-data/
+*.osm
+*.osm.pbf
+*.pbf
+*.osrm
+*.osrm.*
+
+# Public transport dataset not used in walking-only MVP
+backend/data/transport/

@@ -77,6 +77,37 @@ class PedestrianRepository:
             )
             for sensor in sensors
         ]
+    def get_sensors_by_ids(
+        self,
+        sensor_ids: list[int],
+    ) -> dict[int, SensorRecord]:
+        """
+        Return sensor-location records for specific IDs.
+
+        Used when refreshing congestion for a route
+        that has already been planned and persisted.
+        """
+
+        if self.db is None or not sensor_ids:
+            return {}
+
+        sensors = self.db.scalars(
+            select(SensorLocation).where(
+                SensorLocation.sensor_id.in_(
+                    sensor_ids
+                )
+            )
+        ).all()
+
+        return {
+            sensor.sensor_id: SensorRecord(
+                sensor_id=sensor.sensor_id,
+                sensor_name=sensor.sensor_name,
+                latitude=float(sensor.latitude),
+                longitude=float(sensor.longitude),
+            )
+            for sensor in sensors
+        }
 
     # -------------------------------------------------
     # SAVE / UPDATE SENSOR LOCATION

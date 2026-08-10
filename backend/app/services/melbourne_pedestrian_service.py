@@ -228,7 +228,7 @@ class MelbournePedestrianService:
 
                 if offset >= total_count:
                     break
-
+                    
         return locations
     async def _fetch_recent_counts(
         self,
@@ -243,7 +243,7 @@ class MelbournePedestrianService:
         readings = await self._fetch_recent_readings()
 
         counts: dict[int, int] = {}
-
+        
         for reading in readings:
             sensor_id = reading["sensor_id"]
 
@@ -280,7 +280,7 @@ class MelbournePedestrianService:
             payload = response.json()
 
         readings: list[dict] = []
-
+        
         for item in payload.get("results", []):
             sensor_id = item.get("location_id")
             sensing_datetime = item.get(
@@ -332,5 +332,5 @@ class MelbournePedestrianService:
                     ),
                 }
             )
-
+        
         return readings
