@@ -240,3 +240,8 @@ frontend/coverage/
 frontend/.env.local
 frontend/npm-debug.log*
 *.tsbuildinfo
+
+# Office/editor temporary files
+~$*
+~WRL*.tmp
+*.tmp
