@@ -25,6 +25,17 @@ const COLORS = {
   High: "#b91c1c",
   Unavailable: "#475569",
 };
+const ROUTE_COLORS = {
+  low: "#2f855a",
+  medium: "#b7791f",
+  moderate: "#b7791f",
+  high: "#c53030",
+  unavailable: "#64748b",
+};
+
+function crowdSeverity(level) {
+  return { unavailable: 0, low: 1, medium: 2, moderate: 2, high: 3 }[level] || 0;
+}
 
 function FitPointBounds({ points, routePoints, expanded }) {
   const map = useMap();
@@ -71,9 +82,21 @@ export default function PointMap({
   onSelect,
   onChooseLocation,
   routePoints = [],
+  routeSegments = [],
   expanded = false,
   label = "Melbourne map",
 }) {
+  const matchedSensors = Array.from(routeSegments.reduce((sensors, segment) => {
+    const congestionLevel = String(segment.congestion_level || "unavailable").toLowerCase();
+    (segment.matched_sensors || []).forEach((sensor) => {
+      const current = sensors.get(sensor.sensor_id);
+      if (!current || crowdSeverity(congestionLevel) > crowdSeverity(current.congestionLevel)) {
+        sensors.set(sensor.sensor_id, { ...sensor, congestionLevel });
+      }
+    });
+    return sensors;
+  }, new Map()).values());
+
   return (
     <div className="point-map">
       <div className="map-canvas" aria-label={label}>
@@ -92,9 +115,46 @@ export default function PointMap({
           {routePoints.length > 1 ? (
             <Polyline
               positions={routePoints}
-              pathOptions={{ color: "#4965e8", weight: 6, opacity: 0.95 }}
+              pathOptions={{ color: "#4965e8", weight: 5, opacity: routeSegments.length ? 0.35 : 0.95 }}
             />
           ) : null}
+          {routeSegments.map((segment) => {
+            const positions = (segment.points || []).map(([latitude, longitude]) => [latitude, longitude]);
+            if (positions.length < 2) return null;
+            const level = String(segment.congestion_level || "unavailable").toLowerCase();
+            return (
+              <Polyline
+                key={`refuge-route-segment-${segment.segment_sequence}`}
+                positions={positions}
+                pathOptions={{
+                  color: ROUTE_COLORS[level] || ROUTE_COLORS.unavailable,
+                  weight: 7,
+                  opacity: 0.95,
+                }}
+              />
+            );
+          })}
+          {matchedSensors.map((sensor) => (
+            <CircleMarker
+              key={`refuge-route-sensor-${sensor.sensor_id}`}
+              center={[sensor.latitude, sensor.longitude]}
+              radius={6}
+              pathOptions={{
+                color: "#ffffff",
+                weight: 2,
+                fillColor: ROUTE_COLORS[sensor.congestionLevel] || "#173f5f",
+                fillOpacity: 1,
+              }}
+            >
+              <Popup>
+                <strong>{sensor.sensor_name || `Sensor ${sensor.sensor_id}`}</strong><br />
+                {sensor.pedestrian_count == null
+                  ? "Latest count unavailable"
+                  : `${sensor.pedestrian_count} pedestrians/min`}<br />
+                {sensor.congestionLevel === "moderate" ? "Medium" : sensor.congestionLevel.charAt(0).toUpperCase() + sensor.congestionLevel.slice(1)} crowd level
+              </Popup>
+            </CircleMarker>
+          ))}
           {points.map((point) => {
             const selected = String(point.id) === String(selectedId);
             return (

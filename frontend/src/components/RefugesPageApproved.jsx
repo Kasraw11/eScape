@@ -50,6 +50,42 @@ function distanceLabel(distanceM) {
   return distanceM < 1000 ? `${distanceM} m` : `${(distanceM / 1000).toFixed(1)} km`;
 }
 
+function routeDistanceLabel(route) {
+  const metres = (route?.route_segments || []).reduce(
+    (total, segment) => total + Number(segment.distance_m || 0),
+    0,
+  );
+
+  if (!metres) return "Distance unavailable";
+  return metres < 1000 ? `${Math.round(metres)} m` : `${(metres / 1000).toFixed(1)} km`;
+}
+
+function routePedestrianSummary(route) {
+  const segments = (route?.route_segments || []).filter(
+    (segment) => Number.isFinite(Number(segment.pedestrian_count)),
+  );
+
+  if (!segments.length) {
+    return { average: null, peak: null, low: 0, medium: 0, high: 0 };
+  }
+
+  const counts = segments.map((segment) => Number(segment.pedestrian_count));
+  return {
+    average: Math.round(counts.reduce((sum, value) => sum + value, 0) / counts.length),
+    peak: Math.max(...counts),
+    low: counts.filter((value) => value <= 20).length,
+    medium: counts.filter((value) => value > 20 && value <= 40).length,
+    high: counts.filter((value) => value > 40).length,
+  };
+}
+
+function routeSensoryLabel(value) {
+  if (!value) return "Unavailable";
+  return String(value)
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export default function RefugesPage() {
   const [location, setLocation] = useState(null);
   const [locationNotice, setLocationNotice] = useState("");
@@ -220,9 +256,8 @@ export default function RefugesPage() {
       const response = await planRoute({ origin_latitude: location.latitude, origin_longitude: location.longitude, destination_latitude: refuge.latitude, destination_longitude: refuge.longitude, travel_mode: "walking", preferred_crowd_threshold: 3 });
       const route = response.routes?.find((item) => item.is_recommended) || response.routes?.[0];
       if (route) {
-        const distance = (route.route_segments || []).reduce((total, segment) => total + Number(segment.distance_m || 0), 0);
         setDirectionRoute(route);
-        setDirectionsMessage(`Walking to ${refuge.name}: approximately ${route.estimated_travel_minutes} minutes · ${distanceLabel(distance)}. Routing conditions may change.`);
+        setDirectionsMessage(`Walking to ${refuge.name}: approximately ${route.estimated_travel_minutes} minutes · ${routeDistanceLabel(route)}. Routing conditions may change.`);
         setDetailsModalOpen(false);
       } else {
         setDirectionsMessage("The route provider returned no walking directions.");
@@ -281,7 +316,7 @@ export default function RefugesPage() {
         </section>
 
         <div className="refuge-map-area">
-          <PointMapPanel title="Nearby refuges" points={mapPoints} selectedId={selectedId} onSelect={selectRefuge} onChooseLocation={chooseMapLocation} routePoints={directionRoute?.points || []} routeSummary={directionsMessage} label="Sensory refuge map" legend="Green Park · Blue Library · Purple Quiet space. Blue line shows walking directions. Selected markers have a dark outline." />
+          <PointMapPanel title="Nearby refuges" points={mapPoints} selectedId={selectedId} onSelect={selectRefuge} onChooseLocation={chooseMapLocation} routePoints={directionRoute?.points || []} routeSegments={directionRoute?.route_segments || []} routeSummary={directionsMessage} label="Sensory refuge map" legend="Route: green Low (0-20/min) · amber Medium (21-40/min) · red High (41+/min) · grey Unavailable. Small route dots are pedestrian sensors. Refuge markers: green Park · blue Library · purple Quiet space." />
         </div>
 
         <section className="refuge-results glass-panel" aria-labelledby="refuge-results-heading">
@@ -312,6 +347,20 @@ export default function RefugesPage() {
           </dl>
           <button type="button" className="primary-button refuge-directions-button" onClick={() => requestDirections(selected)}>Get directions <span aria-hidden="true">→</span></button>
           {directionsMessage ? <p role="status" aria-live="polite" className="directions-status">{directionsMessage}</p> : null}
+          {directionRoute ? (
+            <section className="route-sensory-summary" aria-labelledby="refuge-route-sensory-heading">
+              <h3 id="refuge-route-sensory-heading">Route sensory summary</h3>
+              <dl>
+                <div><dt>Sensory level</dt><dd>{routeSensoryLabel(directionRoute.sensory_indicator)}</dd></div>
+                <div><dt>Crowd-data coverage</dt><dd>{Math.round((directionRoute.sensor_coverage_ratio || 0) * 100)}%</dd></div>
+                <div><dt>Matched sensors</dt><dd>{directionRoute.matched_sensor_count || 0}</dd></div>
+                <div><dt>Average pedestrians/min</dt><dd>{routePedestrianSummary(directionRoute).average ?? "Unavailable"}</dd></div>
+                <div><dt>Peak pedestrians/min</dt><dd>{routePedestrianSummary(directionRoute).peak ?? "Unavailable"}</dd></div>
+                <div><dt>High-crowd sections</dt><dd>{routePedestrianSummary(directionRoute).high}</dd></div>
+              </dl>
+              <p>{directionRoute.recommendation_explanation || "This route uses the same crowd scoring logic as the journey planner."}</p>
+            </section>
+          ) : null}
           <RefugeFeedbackSummary summary={feedbackSummary} loading={feedbackLoading} error={feedbackError} onLeaveFeedback={() => setFeedbackModalOpen(true)} leaveFeedbackRef={leaveFeedbackRef} />
         </section></AccessibleDialog> : null}
       </div>
