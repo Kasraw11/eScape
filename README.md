@@ -10,7 +10,10 @@ After the initial environment setup is complete, run this command from the repos
 .\start-escape.cmd
 ```
 
-The launcher starts Docker Desktop when required, brings up MySQL and OSRM, checks FastAPI and Next.js, and creates a temporary Cloudflare public URL. Keep the PC running while using that URL. Cloudflare issues a new temporary URL after the tunnel or PC stops.
+The launcher starts Docker Desktop when required, brings up PostgreSQL and OSRM,
+checks FastAPI and Next.js, refreshes pedestrian data and predictions, and
+creates a temporary Cloudflare public URL. Keep the PC running while using that
+URL. Cloudflare issues a new temporary URL after the tunnel or PC stops.
 
 ## Environment
 

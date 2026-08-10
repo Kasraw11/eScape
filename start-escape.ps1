@@ -69,19 +69,19 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "Docker is ready." -ForegroundColor Green
 
-Write-Step "Starting MySQL and OSRM"
+Write-Step "Starting PostgreSQL and OSRM"
 Push-Location $projectRoot
 try {
-    & docker compose up -d mysql osrm
+    & docker compose up -d postgres osrm
     if ($LASTEXITCODE -ne 0) {
-        throw "Docker Compose could not start MySQL and OSRM."
+        throw "Docker Compose could not start PostgreSQL and OSRM."
     }
 } finally {
     Pop-Location
 }
-Wait-ForContainerHealth "escape_mysql"
+Wait-ForContainerHealth "escape_postgres"
 Wait-ForContainerHealth "escape_osrm"
-Write-Host "MySQL and OSRM are healthy." -ForegroundColor Green
+Write-Host "PostgreSQL and OSRM are healthy." -ForegroundColor Green
 
 Write-Step "Starting FastAPI"
 if (-not (Test-Port 8000)) {
@@ -102,7 +102,36 @@ try {
 } catch {
     throw "FastAPI is listening but its health check failed: $($_.Exception.Message)"
 }
+try {
+    $databaseHealth = Invoke-RestMethod -Uri "http://127.0.0.1:8000/health/database" -TimeoutSec 15
+    if ($databaseHealth.status -ne "ok") {
+        throw "Database health status was $($databaseHealth.status)."
+    }
+} catch {
+    throw "FastAPI started, but PostgreSQL is unavailable: $($_.Exception.Message)"
+}
 Write-Host "FastAPI is ready." -ForegroundColor Green
+
+Write-Step "Refreshing pedestrian data"
+$backendPython = Join-Path $backendDirectory ".venv\Scripts\python.exe"
+Push-Location $backendDirectory
+try {
+    & $backendPython "scripts\ingest_realtime_pedestrian_counts.py"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Live pedestrian refresh failed. The app will use the most recent stored readings."
+    } else {
+        Write-Host "Pedestrian counts refreshed." -ForegroundColor Green
+    }
+
+    & $backendPython "-m" "app.jobs.run_predictions"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Prediction refresh failed. Route planning will still use available pedestrian readings."
+    } else {
+        Write-Host "Predictions refreshed." -ForegroundColor Green
+    }
+} finally {
+    Pop-Location
+}
 
 Write-Step "Starting Next.js"
 if (-not (Test-Port 3000)) {
