@@ -34,11 +34,25 @@ Frontend `.env` values:
 
 ```env
 NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY=
-NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
+NEXT_PUBLIC_API_BASE_URL=/backend
+BACKEND_API_URL=http://127.0.0.1:8000
 NEXT_PUBLIC_CONGESTION_POLL_INTERVAL_MS=90000
 NEXT_PUBLIC_EMERGENCY_PHONE=000
 NEXT_PUBLIC_TRUSTED_CONTACT_PHONE=
 ```
+
+`BACKEND_API_URL` is server-only. Keep the localhost value for development and
+set it to the public FastAPI origin in Vercel. Browser requests continue to use
+the same-origin `/backend` proxy.
+
+## Vercel frontend deployment
+
+Create the Vercel project with `frontend` as its root directory. Configure
+`BACKEND_API_URL` with the HTTPS URL of the hosted FastAPI service, then add the
+remaining values from `frontend/.env.example` in Vercel project settings. The
+local MySQL/PostgreSQL database and OSRM container cannot be reached from
+Vercel; they must be hosted separately for routing, crowd data, and refuges to
+work in the deployed app.
 
 ## Backend
 
