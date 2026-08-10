@@ -26,6 +26,30 @@ function displayName(identifier, index) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function pedestrianCountSummary(route) {
+  const segments = (route.route_segments || []).filter((segment) =>
+    Number.isFinite(Number(segment.pedestrian_count))
+  );
+
+  if (!segments.length) {
+    return { average: null, peak: null };
+  }
+
+  const weighted = segments.map((segment) => ({
+    count: Number(segment.pedestrian_count),
+    weight: Math.max(Number(segment.distance_m) || 0, 1),
+  }));
+  const totalWeight = weighted.reduce((sum, item) => sum + item.weight, 0);
+
+  return {
+    average: Math.round(
+      weighted.reduce((sum, item) => sum + item.count * item.weight, 0) /
+        totalWeight
+    ),
+    peak: Math.max(...weighted.map((item) => item.count)),
+  };
+}
+
 function levelLabel(value) {
   const normalized = String(value || "").toLowerCase();
 
@@ -114,6 +138,8 @@ export default function RouteCard({
     (segment) =>
       segment.congestion_level === "high"
   ).length;
+
+  const pedestrianCounts = pedestrianCountSummary(route);
 
   const limitedData =
     route.pedestrian_data_availability === "unavailable" ||
@@ -214,6 +240,16 @@ export default function RouteCard({
           <p>
             <strong>Matched sensors:</strong>{" "}
             {route.matched_sensor_count || 0}
+          </p>
+
+          <p>
+            <strong>Average pedestrians/min:</strong>{" "}
+            {pedestrianCounts.average ?? "Unavailable"}
+          </p>
+
+          <p>
+            <strong>Peak pedestrians/min:</strong>{" "}
+            {pedestrianCounts.peak ?? "Unavailable"}
           </p>
 
           <p>

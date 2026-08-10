@@ -117,7 +117,7 @@
 .map-preview__toolbar {
   position: absolute;
   z-index: 6;
-  top: 86px;
+  top: 138px;
   right: 14px;
   left: 14px;
   display: flex;
@@ -146,9 +146,9 @@
   box-shadow: 0 6px 20px rgba(30, 50, 90, 0.1);
 }
 .map-preview__toolbar .map-detail-tabs button { min-height: 38px; padding-inline: 12px; }
-.map-preview__interactive { min-height: 500px; border-radius: 0; }
+.map-preview__interactive { min-height: 420px; border-radius: 0; }
 .map-preview__interactive .map-canvas,
-.map-preview__interactive .map-notice { min-height: 500px; }
+.map-preview__interactive .map-notice { min-height: 420px; }
 .map-preview__interactive .map-notice {
   display: grid;
   place-items: center;
@@ -168,12 +168,15 @@
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
+  position: relative;
+  z-index: 7;
   margin: 0;
-  border: 1px solid rgba(120, 140, 180, 0.13);
-  border-radius: 13px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 6px 20px rgba(30, 50, 90, 0.1);
-  padding: 11px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--surface-border);
+  border-radius: 0;
+  background: var(--surface);
+  box-shadow: none;
+  padding: 12px 16px;
 }
 .map-preview .route-legend span { display: inline-flex; align-items: center; gap: 7px; font-size: 0.76rem; }
 .map-preview .route-legend__line { width: 10px; height: 10px; border: 0; border-radius: 50%; background: currentColor; }
@@ -306,7 +309,7 @@
   .plan-page .map-preview { min-height: 440px; }
   .map-preview__interactive,
   .map-preview__interactive .map-canvas,
-  .map-preview__interactive .map-notice { min-height: 440px; }
+  .map-preview__interactive .map-notice { min-height: 360px; }
   .route-visual-column { grid-column: 1; }
   .current-trip-layout .map-preview { min-height: 480px; }
 }
@@ -317,7 +320,7 @@
   .journey-panel { padding: 24px 18px 18px; }
   .journey-panel .journey-form { margin-top: 24px; }
   .journey-panel .travel-mode__options { grid-template-columns: 1fr 1.25fr; }
-  .map-preview__toolbar { top: 82px; right: 10px; left: 10px; }
+  .map-preview__toolbar { top: 126px; right: 10px; left: 10px; }
   .map-preview__crowd-control { min-height: 72px; align-items: flex-start; padding: 12px; }
   .map-preview__crowd-control p { max-width: 48%; font-size: 0.68rem; }
   .map-preview .route-legend { gap: 8px; padding: 9px; }
@@ -328,7 +331,7 @@
   .plan-page .map-preview,
   .map-preview__interactive,
   .map-preview__interactive .map-canvas,
-  .map-preview__interactive .map-notice { min-height: 350px; }
+  .map-preview__interactive .map-notice { min-height: 300px; }
   .plan-page .route-list__items { grid-template-columns: 1fr; gap: 18px; }
   .plan-page .route-card { padding-inline: 16px; }
   .plan-page .route-card__header h3 { font-size: 1.15rem; }

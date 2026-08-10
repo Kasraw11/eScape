@@ -10,7 +10,8 @@ from app.services.sensor_matching_service import SegmentSensorMatch
 
 DEFAULT_CROWD_THRESHOLD = 3
 DEFAULT_HISTORICAL_BASELINE_COUNT = 300.0
-HIGH_SENSORY_SCORE_THRESHOLD = 1.25
+LOW_CROWD_MAX_COUNT = 20
+MEDIUM_CROWD_MAX_COUNT = 40
 MINIMUM_SENSOR_COVERAGE_RATIO = 0.5
 PREFERENCE_SCORE_LIMITS = {
     1: 0.55,
@@ -57,14 +58,15 @@ class RouteScore:
 
 
 class SensoryScoringService:
-    """Score pedestrian exposure using current-to-baseline count ratios.
+    """Score pedestrian exposure using counts and historical baselines.
 
     Each covered segment is the mean of its matched sensors' normalised
     congestion values. A sensor uses its same-period historical baseline when
     available, otherwise the documented conservative fallback of 300
-    pedestrians. Route scores are distance-weighted segment means. Scores at
-    or above 1.25 are High; lower scores are Low. Preference levels map to
-    explicit acceptable score limits via ``PREFERENCE_SCORE_LIMITS``.
+    pedestrians. Route scores are distance-weighted segment means. Raw average
+    segment counts of 0-20 are Low, 21-40 are Medium, and 41 or more are High.
+    Preference levels map to explicit acceptable score limits via
+    ``PREFERENCE_SCORE_LIMITS``.
     """
 
     def __init__(self, freshness_service: DataFreshnessService | None = None) -> None:
@@ -135,7 +137,7 @@ class SensoryScoringService:
                     segment_sequence=segment_match.segment_sequence,
                     matched_sensor_count=len(segment_match.matched_sensors),
                     score=segment_score,
-                    congestion_level=self._congestion_level(segment_score),
+                    congestion_level=self._congestion_level(average_count),
                     data_availability="available",
                     weight=segment_weight,
                     pedestrian_count=average_count,
@@ -172,8 +174,17 @@ class SensoryScoringService:
         observed_at = max(segment.observed_at for segment in scored_segments if segment.observed_at is not None)
         total_weight = sum(weight for _, weight in weighted_scores)
         route_score = round(sum(score * weight for score, weight in weighted_scores) / total_weight, 2)
+        weighted_counts = [
+            (segment.pedestrian_count, segment.weight)
+            for segment in scored_segments
+            if segment.pedestrian_count is not None
+        ]
+        route_average_pedestrian_count = (
+            round(sum(count * weight for count, weight in weighted_counts) / total_weight)
+            if weighted_counts
+            else None
+        )
         threshold_exceeded = any(segment.threshold_exceeded is True for segment in scored_segments)
-        has_high_segment = any(segment.congestion_level == "high" for segment in scored_segments)
 
         warning_message = None
         availability = "available" if len(scored_segments) == total_segments else "partial"
@@ -193,7 +204,11 @@ class SensoryScoringService:
             threshold_value: bool | None = None
             qualifies = False
         else:
-            indicator = "High" if has_high_segment or route_score >= HIGH_SENSORY_SCORE_THRESHOLD else "Low"
+            indicator = (
+                "Unavailable"
+                if route_average_pedestrian_count is None
+                else self._congestion_level(route_average_pedestrian_count).title()
+            )
             threshold_value = threshold_exceeded
             qualifies = not threshold_exceeded
 
@@ -213,5 +228,9 @@ class SensoryScoringService:
         )
 
     @staticmethod
-    def _congestion_level(score: float) -> str:
-        return "high" if score >= HIGH_SENSORY_SCORE_THRESHOLD else "low"
+    def _congestion_level(pedestrian_count: int) -> str:
+        if pedestrian_count <= LOW_CROWD_MAX_COUNT:
+            return "low"
+        if pedestrian_count <= MEDIUM_CROWD_MAX_COUNT:
+            return "medium"
+        return "high"

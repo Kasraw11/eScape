@@ -59,10 +59,10 @@ export default function GoogleMapPreview({ routes = [], selectedRouteIdentifier,
         <p role="status" aria-live="polite">{crowdAreaStatus}</p>
       </div>
       <div className="map-preview__toolbar">
-        <RouteLegend />
         <div className="map-preview__actions"><div className="map-detail-tabs" role="tablist" aria-label="Route map and details"><button type="button" role="tab" aria-selected={activeView === "map"} onClick={() => setActiveView("map")}>Map</button><button type="button" role="tab" aria-selected={activeView === "details"} onClick={() => setActiveView("details")}>Details</button></div><button className="icon-button" type="button" onClick={openExpandedMap} ref={expandButtonRef} aria-label="Expand route map"><span aria-hidden="true">↗</span></button></div>
       </div>
       <div role="tabpanel" hidden={activeView !== "map"}>
+        <RouteLegend />
         <div className="map-preview__interactive" aria-label="Open expanded route map" onClick={openExpandedMap}><MapCanvas routes={routes} selectedRouteIdentifier={selectedRouteIdentifier} onSelectRoute={onSelectRoute} showCrowdAreas={showCrowdAreas} /><span className="map-preview__hint">Expand map</span></div>
         {routes.length ? <div className="map-route-selector" aria-label="Map route selector">{routes.slice(0, 3).map((route, index) => <button type="button" key={`${route.route_identifier}-${index}`} className={route.route_identifier === selectedRouteIdentifier ? "map-route-selector__button--active" : ""} onClick={() => onSelectRoute?.(route.route_identifier)}>Route {index + 1}{route.is_recommended ? " · Recommended" : ""}</button>)}</div> : null}
       </div>
