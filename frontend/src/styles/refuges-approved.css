@@ -30,6 +30,24 @@
 .refuge-section-heading h2,
 .refuge-filter-heading h2 { font-size: 1.05rem; }
 
+.refuge-controls .location-input { display: grid; gap: 8px; margin-top: 14px; }
+.refuge-controls .location-input > label { color: var(--text-secondary); font-size: 0.78rem; font-weight: 750; }
+.refuge-controls .location-input__control input { width: 100%; min-height: 48px; border: 1px solid rgba(120, 140, 180, 0.36); border-radius: 12px; color: var(--text-primary); background: rgba(255, 255, 255, 0.92); padding: 11px 44px 11px 44px; }
+.refuge-controls .location-input__control input:hover:not(:disabled) { border-color: rgba(73, 101, 232, 0.58); }
+.refuge-controls .location-input__control input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(73, 101, 232, 0.13); outline: 0; }
+.refuge-controls .location-input__pin { position: absolute; z-index: 1; top: 50%; left: 14px; color: var(--primary); pointer-events: none; transform: translateY(-50%); }
+.refuge-controls .location-input__clear { top: 3px; right: 3px; display: grid; place-items: center; border-radius: 9px; }
+.refuge-controls .place-suggestions { position: static; display: grid; gap: 4px; overflow: auto; max-height: 250px; margin: 0; border-color: var(--surface-border); background: var(--surface-strong); }
+.refuge-controls .place-suggestions li { min-height: 0; padding: 0; }
+.refuge-controls .place-suggestions button { display: grid; width: 100%; gap: 3px; border: 0; border-radius: 8px; color: var(--text-primary); background: transparent; padding: 11px 12px; text-align: left; cursor: pointer; }
+.refuge-controls .place-suggestions button:hover,
+.refuge-controls .place-suggestions button:focus-visible { background: var(--surface-hover); outline: 2px solid var(--primary); outline-offset: -2px; }
+.refuge-controls .place-suggestions small { overflow: hidden; color: var(--text-secondary); text-overflow: ellipsis; white-space: nowrap; }
+.refuge-controls .location-input__selected { display: flex; align-items: flex-start; gap: 8px; border: 1px solid rgba(37, 139, 119, 0.25); border-radius: 10px; color: var(--low); background: var(--low-background); padding: 9px 11px; }
+.refuge-controls .location-input__selected > svg { flex: 0 0 auto; margin-top: 2px; }
+.refuge-controls .location-input__selected span { display: grid; min-width: 0; gap: 2px; }
+.refuge-controls .location-input__selected small { overflow: hidden; color: var(--text-secondary); text-overflow: ellipsis; white-space: nowrap; }
+
 .current-location-button {
   display: inline-flex;
   width: 100%;

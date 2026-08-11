@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getRefugeDetails, getRefugeFeedbackSummary, planRoute, searchRefuges } from "../services/api.js";
 import AccessibleDialog from "./AccessibleDialog.jsx";
 import AppIcon from "./app/AppIcon.jsx";
+import LocationInput from "./LocationInput.jsx";
 import PointMapPanel from "./PointMapPanel.jsx";
 import RefugeFeedbackDialog from "./RefugeFeedbackDialog.jsx";
 import RefugeFeedbackSummary from "./RefugeFeedbackSummary.jsx";
@@ -15,14 +16,6 @@ const CATEGORY_FILTERS = [
   { label: "Libraries", accessibleLabel: "Library", categories: ["Library"] },
   { label: "Quiet spaces", accessibleLabel: "Quiet spaces", categories: ["Quiet public space", "Indoor quiet space"] },
 ];
-const LOCATIONS = [
-  { label: "Melbourne CBD", latitude: -37.8136, longitude: 144.9631 },
-  { label: "Carlton", latitude: -37.8001, longitude: 144.9671 },
-  { label: "Docklands", latitude: -37.8183, longitude: 144.9462 },
-  { label: "East Melbourne", latitude: -37.8132, longitude: 144.9821 },
-  { label: "Southbank", latitude: -37.8233, longitude: 144.9647 },
-];
-
 function localDateTimeValue() {
   const now = new Date();
   const offset = now.getTimezoneOffset() * 60_000;
@@ -116,7 +109,6 @@ export default function RefugesPage() {
   const [location, setLocation] = useState(null);
   const [locationNotice, setLocationNotice] = useState("");
   const [permissionRequested, setPermissionRequested] = useState(false);
-  const [manualQuery, setManualQuery] = useState("Melbourne CBD");
   const [radius, setRadius] = useState(2000);
   const [selectedDateTime, setSelectedDateTime] = useState(localDateTimeValue);
   const [enabledCategories, setEnabledCategories] = useState(new Set(CATEGORIES));
@@ -152,7 +144,7 @@ export default function RefugesPage() {
     }
     globalThis.navigator.geolocation.getCurrentPosition(
       (position) => {
-        setLocation({ label: "Current location", latitude: position.coords.latitude, longitude: position.coords.longitude });
+        setLocation({ label: "Current location", formattedAddress: "Current location", latitude: position.coords.latitude, longitude: position.coords.longitude });
         setLocationNotice("Current location found. Nearby refuges are being updated.");
       },
       (geolocationError) => setLocationNotice(locationError(geolocationError)),
@@ -249,18 +241,6 @@ export default function RefugesPage() {
 
     return () => controller.abort();
   }, [feedbackVersion, visibleRefuges]);
-
-  function chooseManualLocation(event) {
-    event.preventDefault();
-    const match = LOCATIONS.find((item) => item.label.toLowerCase() === manualQuery.trim().toLowerCase())
-      || LOCATIONS.find((item) => item.label.toLowerCase().includes(manualQuery.trim().toLowerCase()));
-    if (!match) {
-      setLocationNotice("That address is outside the controlled Melbourne location list. Choose a suggested suburb or select a point on the map.");
-      return;
-    }
-    setLocation(match);
-    setLocationNotice(`${match.label} selected manually.`);
-  }
 
   function toggleCategoryGroup(categories) {
     setEnabledCategories((current) => {
@@ -359,13 +339,24 @@ export default function RefugesPage() {
       <div className="refuge-layout">
         <section className="refuge-controls glass-panel" aria-labelledby="location-heading">
           <div className="refuge-section-heading"><h2 id="location-heading">Location</h2></div>
-          <button type="button" className="current-location-button" onClick={requestBrowserLocation} disabled={permissionRequested}><AppIcon name="locate" size={20} /><span>{location?.label || "Use my current location"}</span></button>
-          <form className="manual-location-form refuge-manual-location" onSubmit={chooseManualLocation}>
-            <label htmlFor="manual-location">Search suburb or landmark</label>
-            <div><input id="manual-location" list="melbourne-locations" value={manualQuery} onChange={(event) => setManualQuery(event.target.value)} placeholder="e.g. Carlton" /><button type="submit"><AppIcon name="search" size={18} /><span>Use location</span></button></div>
-            <datalist id="melbourne-locations">{LOCATIONS.map((item) => <option key={item.label} value={item.label} />)}</datalist>
-          </form>
-          <p className="location-status" role="status" aria-live="polite">{location ? `Search centre: ${location.label}.` : "No location selected yet."} {locationNotice}</p>
+          <LocationInput
+            label="Search location in Melbourne CBD"
+            accessibleLabel="Refuge search location"
+            placeholder="e.g. State Library Victoria"
+            selectedPlace={location}
+            loading={loading}
+            showCurrentLocation
+            onSelectSuggestion={(place) => {
+              setLocation(place);
+              setLocationNotice(`${place.label} selected. Nearby refuges are being updated.`);
+            }}
+            onClear={() => {
+              setLocation(null);
+              setLocationNotice("Choose a Melbourne CBD location to find nearby refuges.");
+            }}
+            onUseCurrentLocation={requestBrowserLocation}
+          />
+          {locationNotice ? <p className="location-status" role="status" aria-live="polite">{locationNotice}</p> : null}
 
           <div className="refuge-filter-heading"><h2 id="refuge-filters-heading">Filters</h2><button type="button" onClick={() => { setEnabledCategories(new Set(CATEGORIES)); setRefugeQuery(""); setOpenOnly(false); }}><AppIcon name="reset" size={16} /><span>Reset</span></button></div>
           <label className="refuge-search">Search refuges<input type="search" value={refugeQuery} onChange={(event) => setRefugeQuery(event.target.value)} placeholder="Search by name" /></label>

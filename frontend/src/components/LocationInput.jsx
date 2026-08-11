@@ -9,6 +9,10 @@ import {
 } from "react";
 import AppIcon from "./app/AppIcon.jsx";
 
+// Approximate Melbourne CBD bounds: Flagstaff to Parliament and the Yarra.
+const MELBOURNE_CBD_VIEWBOX = "144.9510,-37.8060,144.9745,-37.8255";
+const SEARCH_DELAY_MS = 550;
+
 const LocationInput = forwardRef(function LocationInput(
   {
     label,
@@ -41,6 +45,13 @@ const LocationInput = forwardRef(function LocationInput(
   // Prevent repeated searches.
   const [searching, setSearching] = useState(false);
 
+  function placeArea(item) {
+    const address = item.address || {};
+    const area = address.suburb || address.city_district || address.neighbourhood
+      || address.city || address.town || address.village;
+    return [area, address.postcode].filter(Boolean).join(" · ");
+  }
+
   /**
    * Keep the input synchronized with the selected place.
    */
@@ -65,11 +76,70 @@ const LocationInput = forwardRef(function LocationInput(
         fallbackLabel,
 
       formattedAddress: item.display_name,
+      areaLabel: placeArea(item),
 
       latitude: Number(item.lat),
       longitude: Number(item.lon),
     };
   }
+
+  async function fetchLocations(query, limit, signal) {
+    const params = new globalThis.URLSearchParams({
+      q: `${query}, Victoria, Australia`,
+      format: "jsonv2",
+      addressdetails: "1",
+      namedetails: "1",
+      limit: String(limit),
+      countrycodes: "au",
+      "accept-language": "en",
+      viewbox: MELBOURNE_CBD_VIEWBOX,
+      bounded: "1",
+    });
+
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?${params.toString()}`,
+      { signal },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Location search failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data
+      .map((item) => convertPlace(item))
+      .filter((place) => Number.isFinite(place.latitude) && Number.isFinite(place.longitude));
+  }
+
+  useEffect(() => {
+    const query = value.trim();
+    if (selectedPlace || query.length < 3) return undefined;
+
+    const controller = new globalThis.AbortController();
+    const timer = globalThis.setTimeout(async () => {
+      try {
+        setSearching(true);
+        setNotice("Searching Melbourne CBD locations...");
+        const places = await fetchLocations(query, 5, controller.signal);
+        setSuggestions(places);
+        setOpen(places.length > 0);
+        setNotice(places.length ? "" : "No locations found within Melbourne CBD.");
+      } catch (searchError) {
+        if (searchError.name !== "AbortError") {
+          setSuggestions([]);
+          setOpen(false);
+          setNotice("Unable to search locations right now.");
+        }
+      } finally {
+        if (!controller.signal.aborted) setSearching(false);
+      }
+    }, SEARCH_DELAY_MS);
+
+    return () => {
+      globalThis.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [selectedPlace, value]);
 
   /**
    * Searches OpenStreetMap/Nominatim and shows
@@ -91,35 +161,7 @@ const LocationInput = forwardRef(function LocationInput(
       setSuggestions([]);
       setOpen(false);
 
-      const params = new globalThis.URLSearchParams({
-        q: `${query}, Melbourne, Victoria, Australia`,
-        format: "jsonv2",
-        addressdetails: "1",
-        namedetails: "1",
-        limit: "5",
-        countrycodes: "au",
-        "accept-language": "en",
-      });
-
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?${params.toString()}`
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          `Location search failed with status ${response.status}`
-        );
-      }
-
-      const data = await response.json();
-
-      const places = data
-        .map((item) => convertPlace(item))
-        .filter(
-          (place) =>
-            Number.isFinite(place.latitude) &&
-            Number.isFinite(place.longitude)
-        );
+      const places = await fetchLocations(query, 5);
 
       setSuggestions(places);
 
@@ -174,37 +216,14 @@ const LocationInput = forwardRef(function LocationInput(
       setSearching(true);
       setNotice("Finding location...");
 
-      const params = new globalThis.URLSearchParams({
-        q: `${query}, Melbourne, Victoria, Australia`,
-        format: "jsonv2",
-        addressdetails: "1",
-        namedetails: "1",
-        limit: "1",
-        countrycodes: "au",
-        "accept-language": "en",
-      });
+      const places = await fetchLocations(query, 1);
 
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?${params.toString()}`
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          `Location search failed with status ${response.status}`
-        );
-      }
-
-      const data = await response.json();
-
-      if (!data.length) {
-        setNotice(`No location found for "${query}".`);
+      if (!places.length) {
+        setNotice(`No Melbourne CBD location found for "${query}".`);
         return null;
       }
 
-      const place = convertPlace(
-        data[0],
-        query
-      );
+      const place = places[0];
 
       if (
         !Number.isFinite(place.latitude) ||
@@ -337,20 +356,6 @@ const LocationInput = forwardRef(function LocationInput(
         )}
       </div>
 
-      <button
-        type="button"
-        className="location-search-button"
-        onClick={searchLocations}
-        disabled={
-          loading ||
-          searching ||
-          value.trim().length < 3
-        }
-      >
-        <AppIcon name="search" size={18} />
-        <span>{searching ? "Searching..." : "Search location"}</span>
-      </button>
-
       {showCurrentLocation && (
         <button
           type="button"
@@ -364,7 +369,7 @@ const LocationInput = forwardRef(function LocationInput(
       )}
 
       {open && suggestions.length > 0 && (
-        <ul className="place-suggestions">
+        <ul className="place-suggestions" aria-label={`${label} suggestions`}>
           {suggestions.map((place) => (
             <li key={place.id}>
               <button
@@ -378,12 +383,19 @@ const LocationInput = forwardRef(function LocationInput(
                 </strong>
 
                 <small>
-                  {place.formattedAddress}
+                  {place.areaLabel || place.formattedAddress}
                 </small>
               </button>
             </li>
           ))}
         </ul>
+      )}
+
+      {selectedPlace && (
+        <div className="location-input__selected" role="status">
+          <AppIcon name="check" size={16} />
+          <span><strong>{selectedPlace.label} selected</strong><small>{selectedPlace.formattedAddress}</small></span>
+        </div>
       )}
 
       {notice && (

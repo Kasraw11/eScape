@@ -60,6 +60,16 @@
 .journey-panel .location-input__clear { top: 5px; right: 3px; }
 .journey-panel .location-input__clear { display: grid; place-items: center; border-radius: 9px; }
 .journey-panel .location-input__clear:hover { color: var(--text-primary); background: var(--surface-hover); }
+.journey-panel .place-suggestions { position: static; display: grid; gap: 4px; overflow: auto; max-height: 260px; margin-top: 2px; border-color: var(--surface-border); background: var(--surface-strong); }
+.journey-panel .place-suggestions li { min-height: 0; padding: 0; }
+.journey-panel .place-suggestions button { display: grid; width: 100%; gap: 3px; border: 0; border-radius: 8px; color: var(--text-primary); background: transparent; padding: 11px 12px; text-align: left; cursor: pointer; }
+.journey-panel .place-suggestions button:hover,
+.journey-panel .place-suggestions button:focus-visible { background: var(--surface-hover); outline: 2px solid var(--primary); outline-offset: -2px; }
+.journey-panel .place-suggestions small { overflow: hidden; color: var(--text-secondary); text-overflow: ellipsis; white-space: nowrap; }
+.journey-panel .location-input__selected { display: flex; align-items: flex-start; gap: 8px; border: 1px solid rgba(37, 139, 119, 0.25); border-radius: 10px; color: var(--low); background: var(--low-background); padding: 9px 11px; }
+.journey-panel .location-input__selected > svg { flex: 0 0 auto; margin-top: 2px; }
+.journey-panel .location-input__selected span { display: grid; min-width: 0; gap: 2px; }
+.journey-panel .location-input__selected small { overflow: hidden; color: var(--text-secondary); text-overflow: ellipsis; white-space: nowrap; }
 .journey-panel .location-search-button,
 .journey-panel .current-location-button {
   display: inline-flex;
