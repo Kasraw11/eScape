@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getRefugeDetails, getRefugeFeedbackSummary, planRoute, searchRefuges } from "../services/api.js";
 import AccessibleDialog from "./AccessibleDialog.jsx";
+import AppIcon from "./app/AppIcon.jsx";
 import PointMapPanel from "./PointMapPanel.jsx";
 import RefugeFeedbackDialog from "./RefugeFeedbackDialog.jsx";
 import RefugeFeedbackSummary from "./RefugeFeedbackSummary.jsx";
@@ -98,6 +99,8 @@ export default function RefugesPage() {
   const [openOnly, setOpenOnly] = useState(false);
   const [refuges, setRefuges] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
+  const refugeCardRefs = useRef(new Map());
+  const mapAreaRef = useRef(null);
   const [details, setDetails] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -237,6 +240,17 @@ export default function RefugesPage() {
     }
   }, [location, selectedDateTime, visibleRefuges]);
 
+  const selectMapRefuge = useCallback((refugeId) => {
+    void selectRefuge(refugeId);
+    globalThis.requestAnimationFrame(() => {
+      const reduceMotion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      refugeCardRefs.current.get(String(refugeId))?.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "center",
+      });
+    });
+  }, [selectRefuge]);
+
   async function openDetails(refuge, trigger) {
     detailsReturnRef.current = trigger;
     setDetailsModalOpen(true);
@@ -259,6 +273,13 @@ export default function RefugesPage() {
         setDirectionRoute(route);
         setDirectionsMessage(`Walking to ${refuge.name}: approximately ${route.estimated_travel_minutes} minutes · ${routeDistanceLabel(route)}. Routing conditions may change.`);
         setDetailsModalOpen(false);
+        globalThis.requestAnimationFrame(() => {
+          const reduceMotion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+          mapAreaRef.current?.scrollIntoView({
+            behavior: reduceMotion ? "auto" : "smooth",
+            block: "start",
+          });
+        });
       } else {
         setDirectionsMessage("The route provider returned no walking directions.");
       }
@@ -283,21 +304,23 @@ export default function RefugesPage() {
   return (
     <div className="iteration-page page-stack refuge-app">
       <header className="page-heading refuge-page-heading">
-        <p className="section-kicker">Nearby spaces</p><h1>Find refuges</h1><p>Discover quiet, welcoming spaces near you to take a break and reset.</p>
+        <p className="section-kicker">Nearby spaces</p>
+        <h1>Find refuges</h1>
+        <p>Discover quiet, welcoming spaces near you to take a break and reset.</p>
       </header>
 
       <div className="refuge-layout">
         <section className="refuge-controls glass-panel" aria-labelledby="location-heading">
           <div className="refuge-section-heading"><h2 id="location-heading">Location</h2></div>
-          <button type="button" className="current-location-button" onClick={requestBrowserLocation} disabled={permissionRequested}><span>{location?.label || "Use my current location"}</span><span aria-hidden="true">◎</span></button>
+          <button type="button" className="current-location-button" onClick={requestBrowserLocation} disabled={permissionRequested}><AppIcon name="locate" size={20} /><span>{location?.label || "Use my current location"}</span></button>
           <form className="manual-location-form refuge-manual-location" onSubmit={chooseManualLocation}>
             <label htmlFor="manual-location">Search suburb or landmark</label>
-            <div><input id="manual-location" list="melbourne-locations" value={manualQuery} onChange={(event) => setManualQuery(event.target.value)} /><button type="submit">Use selected location</button></div>
+            <div><input id="manual-location" list="melbourne-locations" value={manualQuery} onChange={(event) => setManualQuery(event.target.value)} placeholder="e.g. Carlton" /><button type="submit"><AppIcon name="search" size={18} /><span>Use location</span></button></div>
             <datalist id="melbourne-locations">{LOCATIONS.map((item) => <option key={item.label} value={item.label} />)}</datalist>
           </form>
           <p className="location-status" role="status" aria-live="polite">{location ? `Search centre: ${location.label}.` : "No location selected yet."} {locationNotice}</p>
 
-          <div className="refuge-filter-heading"><h2 id="refuge-filters-heading">Filters</h2><button type="button" onClick={() => { setEnabledCategories(new Set(CATEGORIES)); setRefugeQuery(""); setOpenOnly(false); }}>Reset</button></div>
+          <div className="refuge-filter-heading"><h2 id="refuge-filters-heading">Filters</h2><button type="button" onClick={() => { setEnabledCategories(new Set(CATEGORIES)); setRefugeQuery(""); setOpenOnly(false); }}><AppIcon name="reset" size={16} /><span>Reset</span></button></div>
           <label className="refuge-search">Search refuges<input type="search" value={refugeQuery} onChange={(event) => setRefugeQuery(event.target.value)} placeholder="Search by name" /></label>
           <fieldset className="category-filters refuge-filter-pills" aria-labelledby="refuge-filters-heading">
             <legend className="sr-only">Refuge types</legend>
@@ -315,8 +338,8 @@ export default function RefugesPage() {
           <details className="refuge-more-filters"><summary>Date and time</summary><label>Selected date and time<input aria-label="Selected date and time" type="datetime-local" value={selectedDateTime} onChange={(event) => setSelectedDateTime(event.target.value)} required /></label></details>
         </section>
 
-        <div className="refuge-map-area">
-          <PointMapPanel title="Nearby refuges" points={mapPoints} selectedId={selectedId} onSelect={selectRefuge} onChooseLocation={chooseMapLocation} routePoints={directionRoute?.points || []} routeSegments={directionRoute?.route_segments || []} routeSummary={directionsMessage} label="Sensory refuge map" legend="Route: green Low (0-20/min) · amber Medium (21-40/min) · red High (41+/min) · grey Unavailable. Small route dots are pedestrian sensors. Refuge markers: green Park · blue Library · purple Quiet space." />
+        <div className="refuge-map-area" ref={mapAreaRef}>
+          <PointMapPanel title="Nearby refuges" points={mapPoints} selectedId={selectedId} onSelect={selectMapRefuge} onChooseLocation={chooseMapLocation} routePoints={directionRoute?.points || []} routeSegments={directionRoute?.route_segments || []} routeSummary={directionsMessage} label="Sensory refuge map" legend="Route: green Low (0-20/min) · amber Medium (21-40/min) · red High (41+/min) · grey Unavailable. Small route dots are pedestrian sensors. Refuge markers: green Park · blue Library · purple Quiet space." showTextAlternative={false} />
         </div>
 
         <section className="refuge-results glass-panel" aria-labelledby="refuge-results-heading">
@@ -324,14 +347,23 @@ export default function RefugesPage() {
           <div aria-live="polite">{loading ? <p>Searching nearby refuges…</p> : null}{error ? <p className="error-state" role="alert">{error}</p> : null}</div>
           {!loading && !error && visibleRefuges.length === 0 ? <div className="empty-state"><h3>No nearby refuge locations were found</h3><p>{emptyMessage || "Change the search, select more types, or increase the distance."}</p></div> : null}
           <div className="refuge-list">{visibleRefuges.map((item) => (
-            <article key={item.refuge_id} className={`refuge-card ${item.refuge_id === selectedId ? "refuge-card--selected" : ""}`}>
-              <button type="button" className="refuge-card__select" onClick={() => selectRefuge(item)} aria-label={`View details for ${item.name}`}>
+            <article
+              key={item.refuge_id}
+              ref={(node) => {
+                const key = String(item.refuge_id);
+                if (node) refugeCardRefs.current.set(key, node);
+                else refugeCardRefs.current.delete(key);
+              }}
+              className={`refuge-card ${item.refuge_id === selectedId ? "refuge-card--selected" : ""}`}
+            >
+              <button type="button" className="refuge-card__select" onClick={() => selectRefuge(item)} aria-label={`View details for ${item.name}`} aria-pressed={item.refuge_id === selectedId}>
+                {item.refuge_id === selectedId ? <span className="refuge-card__selected-badge"><AppIcon name="pin" size={15} />Selected on map</span> : null}
                 <span className="refuge-card__heading"><span><strong>{item.name}</strong><small>{item.category}</small></span><strong>{distanceLabel(item.distance_m)}</strong></span>
                 <span className="refuge-card__description">{item.sensory_suitability_description}</span>
                 <span className="refuge-card__meta"><span><strong>{openingLabel(item.opening_status)}</strong>{item.opening_status === "open" && item.opening_hours_summary ? <small>{item.opening_hours_summary}</small> : null}</span><span>{item.estimated_travel_minutes} min walk</span></span>
               </button>
               <h3 className="sr-only">{item.name}</h3>
-              <div className="card-actions"><button type="button" onClick={(event) => openDetails(item, event.currentTarget)}>View details</button><button type="button" onClick={() => requestDirections(item)}>Directions</button></div>
+              <div className="card-actions"><button type="button" onClick={(event) => openDetails(item, event.currentTarget)}><AppIcon name="info" size={17} /><span>View details</span></button><button type="button" onClick={() => requestDirections(item)}><AppIcon name="route" size={17} /><span>Directions</span></button></div>
             </article>
           ))}</div>
         </section>
@@ -345,7 +377,7 @@ export default function RefugesPage() {
             <div><dt>Accessibility</dt><dd>{selected.accessibility_notes || "Accessibility information unavailable"}</dd></div>
             <div><dt>Sensory notes</dt><dd>{selected.sensory_notes || "Detailed sensory information unavailable"}</dd></div>
           </dl>
-          <button type="button" className="primary-button refuge-directions-button" onClick={() => requestDirections(selected)}>Get directions <span aria-hidden="true">→</span></button>
+          <button type="button" className="primary-button refuge-directions-button" onClick={() => requestDirections(selected)}><AppIcon name="route" size={19} /><span>Get directions</span><AppIcon name="arrowRight" size={19} /></button>
           {directionsMessage ? <p role="status" aria-live="polite" className="directions-status">{directionsMessage}</p> : null}
           {directionRoute ? (
             <section className="route-sensory-summary" aria-labelledby="refuge-route-sensory-heading">

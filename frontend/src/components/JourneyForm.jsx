@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import LocationInput from "./LocationInput.jsx";
+import AppIcon from "./app/AppIcon.jsx";
 
 export default function JourneyForm({
   onSubmit,
@@ -129,9 +130,9 @@ export default function JourneyForm({
         {/* Starting location */}
         <LocationInput
           ref={originInputRef}
-          label="From"
+          label="Starting location"
           accessibleLabel="Origin"
-          placeholder="Enter starting location"
+          placeholder="e.g. Melbourne Central"
           selectedPlace={origin}
           loading={loading}
           showCurrentLocation
@@ -145,9 +146,9 @@ export default function JourneyForm({
         {/* Destination */}
         <LocationInput
           ref={destinationInputRef}
-          label="To"
+          label="Destination"
           accessibleLabel="Destination"
-          placeholder="Enter destination"
+          placeholder="e.g. State Library Victoria"
           selectedPlace={destination}
           loading={loading}
           onSelectSuggestion={setDestination}
@@ -184,10 +185,9 @@ export default function JourneyForm({
           "Finding routes…"
         ) : (
           <>
+            <AppIcon name="route" size={20} />
             <span>Find routes</span>
-            <span aria-hidden="true">
-              →
-            </span>
+            <AppIcon className="journey-form__submit-arrow" name="arrowRight" size={20} />
           </>
         )}
       </button>

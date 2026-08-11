@@ -31,6 +31,11 @@ export default function AppIcon({ name, size = 22, className = "" }) {
     reset: <><path d="M4 7v5h5" /><path d="M5.5 11a7 7 0 1 1 1.3 6.5" /></>,
     walk: <><circle cx="13" cy="4" r="2" /><path d="m10 22 1.5-7-2.5-2 2-5 4 2 3 3" /><path d="m11.5 15 4 2 2 5" /><path d="M7 13 4 18" /></>,
     transit: <><rect x="5" y="3" width="14" height="16" rx="3" /><path d="M8 7h8" /><path d="M8 12h8" /><path d="m8 21 2-2" /><path d="m16 19 2 2" /><circle cx="9" cy="15.5" r="1" /><circle cx="15" cy="15.5" r="1" /></>,
+    pin: <><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></>,
+    search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
+    locate: <><circle cx="12" cy="12" r="3" /><circle cx="12" cy="12" r="8" /><path d="M12 2V5" /><path d="M12 19v3" /><path d="M2 12h3" /><path d="M19 12h3" /></>,
+    close: <><path d="m6 6 12 12" /><path d="M18 6 6 18" /></>,
+    arrowRight: <><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></>,
   };
 
   return <svg {...common}>{paths[name] || paths.home}</svg>;

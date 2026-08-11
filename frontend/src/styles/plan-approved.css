@@ -46,12 +46,45 @@
 .route-preference > span { color: var(--text-primary); font-size: 0.86rem; font-weight: 800; }
 .journey-panel .location-input__control input {
   min-height: 52px;
-  border-color: rgba(120, 140, 180, 0.28);
+  border: 1px solid rgba(120, 140, 180, 0.38);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.82);
-  padding-inline: 16px 44px;
+  padding: 12px 44px 12px 46px;
+  font-size: 1rem;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
 }
+.journey-panel .location-input__control input:hover:not(:disabled) { border-color: rgba(73, 101, 232, 0.58); }
+.journey-panel .location-input__control input:focus { border-color: var(--primary); background: var(--surface-strong); box-shadow: 0 0 0 4px rgba(73, 101, 232, 0.13); outline: 0; }
+.journey-panel .location-input__control input::placeholder { color: var(--text-muted); opacity: 0.9; }
+.journey-panel .location-input__pin { position: absolute; z-index: 1; top: 50%; left: 15px; color: var(--primary); pointer-events: none; transform: translateY(-50%); }
 .journey-panel .location-input__clear { top: 5px; right: 3px; }
+.journey-panel .location-input__clear { display: grid; place-items: center; border-radius: 9px; }
+.journey-panel .location-input__clear:hover { color: var(--text-primary); background: var(--surface-hover); }
+.journey-panel .location-search-button,
+.journey-panel .current-location-button {
+  display: inline-flex;
+  width: 100%;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid rgba(73, 101, 232, 0.26);
+  border-radius: 11px;
+  color: var(--primary-hover);
+  background: rgba(73, 101, 232, 0.055);
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 750;
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+.journey-panel .location-search-button:hover:not(:disabled),
+.journey-panel .current-location-button:hover:not(:disabled) { border-color: var(--primary); background: rgba(73, 101, 232, 0.11); }
+.journey-panel .location-search-button:focus-visible,
+.journey-panel .current-location-button:focus-visible { outline: 3px solid rgba(73, 101, 232, 0.28); outline-offset: 2px; }
+.journey-panel .location-search-button:disabled,
+.journey-panel .current-location-button:disabled { opacity: 0.48; cursor: not-allowed; }
+.journey-panel .current-location-button { color: #24735f; border-color: rgba(47, 148, 120, 0.28); background: rgba(47, 148, 120, 0.07); }
+.journey-panel .current-location-button:hover:not(:disabled) { border-color: #2f9478; background: rgba(47, 148, 120, 0.13); }
 .journey-panel .text-button { display: inline-flex; min-height: 38px; align-items: center; color: var(--primary); padding: 4px 10px; }
 
 .journey-panel .travel-mode { margin: 0; border: 0; padding: 0; }
@@ -91,10 +124,12 @@
   width: 100%;
   min-height: 54px;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 10px;
   border-radius: 12px;
   padding-inline: 20px;
 }
+.journey-form__submit-arrow { margin-left: auto; }
 .planner-data-note {
   margin: 0;
   border: 1px solid rgba(73, 101, 232, 0.08);

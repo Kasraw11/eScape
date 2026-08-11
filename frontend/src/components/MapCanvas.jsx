@@ -7,6 +7,7 @@ import {
   Polyline,
   Circle,
   CircleMarker,
+  Marker,
   Popup,
   useMap,
 } from "react-leaflet";
@@ -16,6 +17,20 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 const MELBOURNE_CBD_CENTER = [-37.8136, 144.9631];
+const START_ICON = L.divIcon({
+  className: "route-endpoint-icon",
+  html: '<span class="route-endpoint-icon__start"></span>',
+  iconSize: [26, 26],
+  iconAnchor: [13, 13],
+  popupAnchor: [0, -14],
+});
+const DESTINATION_ICON = L.divIcon({
+  className: "route-endpoint-icon",
+  html: '<span class="route-endpoint-icon__destination"></span>',
+  iconSize: [34, 42],
+  iconAnchor: [17, 39],
+  popupAnchor: [0, -38],
+});
 
 /**
  * Automatically fits the map around all returned routes.
@@ -82,6 +97,9 @@ export default function MapCanvas({
   const selectedRoute = routes.find(
     (route) => route.route_identifier === selectedRouteIdentifier
   );
+  const endpointRoute = selectedRoute || routes.find((route) => route.is_recommended) || routes[0];
+  const routeStart = endpointRoute?.points?.[0];
+  const routeDestination = endpointRoute?.points?.[endpointRoute.points.length - 1];
   const matchedSensors = Array.from((selectedRoute?.route_segments || []).reduce(
     (sensors, segment) => {
       (segment.matched_sensors || []).forEach((sensor) => {
@@ -225,6 +243,17 @@ export default function MapCanvas({
             </Popup>
           </CircleMarker>
         ))}
+
+        {routeStart ? (
+          <Marker position={routeStart} icon={START_ICON} zIndexOffset={900}>
+            <Popup><strong>Starting location</strong></Popup>
+          </Marker>
+        ) : null}
+        {routeDestination ? (
+          <Marker position={routeDestination} icon={DESTINATION_ICON} zIndexOffset={1000}>
+            <Popup><strong>Destination</strong></Popup>
+          </Marker>
+        ) : null}
       </MapContainer>
     </div>
   );

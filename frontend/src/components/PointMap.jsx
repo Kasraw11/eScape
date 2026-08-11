@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import {
   CircleMarker,
   MapContainer,
+  Marker,
   Polyline,
   Popup,
   TileLayer,
@@ -15,6 +16,20 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 const MELBOURNE_CBD_CENTER = [-37.8136, 144.9631];
+const START_ICON = L.divIcon({
+  className: "route-endpoint-icon",
+  html: '<span class="route-endpoint-icon__start"></span>',
+  iconSize: [26, 26],
+  iconAnchor: [13, 13],
+  popupAnchor: [0, -14],
+});
+const DESTINATION_ICON = L.divIcon({
+  className: "route-endpoint-icon",
+  html: '<span class="route-endpoint-icon__destination"></span>',
+  iconSize: [34, 42],
+  iconAnchor: [17, 39],
+  popupAnchor: [0, -38],
+});
 const COLORS = {
   Park: "#15803d",
   Library: "#2563eb",
@@ -85,6 +100,7 @@ export default function PointMap({
   routeSegments = [],
   expanded = false,
   label = "Melbourne map",
+  showTextAlternative = true,
 }) {
   const matchedSensors = Array.from(routeSegments.reduce((sensors, segment) => {
     const congestionLevel = String(segment.congestion_level || "unavailable").toLowerCase();
@@ -178,10 +194,20 @@ export default function PointMap({
               </CircleMarker>
             );
           })}
+          {routePoints.length > 1 ? (
+            <>
+              <Marker position={routePoints[0]} icon={START_ICON} zIndexOffset={900}>
+                <Popup><strong>Starting location</strong></Popup>
+              </Marker>
+              <Marker position={routePoints[routePoints.length - 1]} icon={DESTINATION_ICON} zIndexOffset={1000}>
+                <Popup><strong>Destination refuge</strong></Popup>
+              </Marker>
+            </>
+          ) : null}
         </MapContainer>
       </div>
 
-      <div className="map-text-alternative" aria-label={`${label} text alternative`}>
+      {showTextAlternative ? <div className="map-text-alternative" aria-label={`${label} text alternative`}>
         <strong>Map locations</strong>
         {points.length ? (
           <ul>{points.map((point) => (
@@ -197,7 +223,7 @@ export default function PointMap({
             </li>
           ))}</ul>
         ) : <p>No locations to show.</p>}
-      </div>
+      </div> : null}
     </div>
   );
 }

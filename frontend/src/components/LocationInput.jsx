@@ -7,6 +7,7 @@ import {
   useImperativeHandle,
   useState,
 } from "react";
+import AppIcon from "./app/AppIcon.jsx";
 
 const LocationInput = forwardRef(function LocationInput(
   {
@@ -308,7 +309,8 @@ const LocationInput = forwardRef(function LocationInput(
         {label}
       </label>
 
-      <div className="location-input__field">
+      <div className="location-input__control">
+        <AppIcon className="location-input__pin" name="pin" size={20} />
         <input
           id={id}
           aria-label={accessibleLabel}
@@ -330,7 +332,7 @@ const LocationInput = forwardRef(function LocationInput(
               accessibleLabel || label
             ).toLowerCase()}`}
           >
-            ×
+            <AppIcon name="close" size={18} />
           </button>
         )}
       </div>
@@ -345,9 +347,8 @@ const LocationInput = forwardRef(function LocationInput(
           value.trim().length < 3
         }
       >
-        {searching
-          ? "Searching..."
-          : "Search location"}
+        <AppIcon name="search" size={18} />
+        <span>{searching ? "Searching..." : "Search location"}</span>
       </button>
 
       {showCurrentLocation && (
@@ -357,7 +358,8 @@ const LocationInput = forwardRef(function LocationInput(
           onClick={onUseCurrentLocation}
           disabled={loading}
         >
-          Use current location
+          <AppIcon name="locate" size={19} />
+          <span>Use current location</span>
         </button>
       )}
 
