@@ -255,6 +255,8 @@
 .sensory-dots--low .sensory-dot--active { background: #2f9478; }
 .sensory-dots--moderate .sensory-dot--active { background: #e49a1a; }
 .sensory-dots--high .sensory-dot--active { background: #dc4949; }
+.route-card__sensory-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.route-card__sensory-row > :nth-child(2) { font-weight: 700; }
 .route-card__data-note { margin: 14px 0 0; color: #7b5a1a; font-size: 0.7rem; line-height: 1.4; }
 .route-card__select-label,
 .route-card__selection-note { display: block; min-height: 32px; margin: 14px 0 0; color: var(--primary); font-size: 0.72rem; font-weight: 750; }

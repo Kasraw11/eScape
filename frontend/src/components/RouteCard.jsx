@@ -84,11 +84,11 @@ function SensoryRow({ label, value }) {
 
   const strength =
     normalized === "Low"
-      ? 2
+      ? 1
       : normalized === "Moderate"
         ? 3
         : normalized === "High"
-          ? 4
+          ? 5
           : 0;
 
   return (

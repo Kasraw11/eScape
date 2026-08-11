@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import melbourneHero from "../../public/images/melbourne-cbd-hero.png";
 import AppIcon from "./app/AppIcon.jsx";
 
@@ -8,12 +9,14 @@ const FEATURES = [
     description: "Compare sensory-aware routes and travel with confidence.",
     icon: "route",
     tone: "green",
+    href: "/plan",
   },
   {
     title: "Find refuges",
     description: "Discover quiet, welcoming spaces when you need a break.",
     icon: "leaf",
     tone: "purple",
+    href: "/refuges",
   },
   {
     title: "Get real-time alerts",
@@ -26,18 +29,37 @@ const FEATURES = [
     description: "Adjust preferences to suit your sensory needs.",
     icon: "sliders",
     tone: "blue",
+    href: "/settings",
   },
 ];
 
 function FeatureCard({ feature }) {
-  return (
-    <article className={`feature-card feature-card--${feature.tone}`}>
+  const content = (
+    <>
       <span className="feature-card__icon"><AppIcon name={feature.icon} size={29} /></span>
       <div>
         <h2>{feature.title}</h2>
         <p>{feature.description}</p>
       </div>
       <AppIcon className="feature-card__watermark" name={feature.icon} size={108} />
+    </>
+  );
+
+  if (feature.href) {
+    return (
+      <Link
+        className={`feature-card feature-card--${feature.tone} feature-card--link`}
+        href={feature.href}
+        aria-label={feature.title}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <article className={`feature-card feature-card--${feature.tone}`}>
+      {content}
     </article>
   );
 }

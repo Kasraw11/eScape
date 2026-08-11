@@ -137,6 +137,9 @@ button { transition: background-color 150ms ease, color 150ms ease, border-color
 [data-theme="dark"] .sensory-indicator--moderate { color: var(--moderate); background: var(--moderate-background); }
 [data-theme="dark"] .sensory-indicator--high { color: var(--high); background: var(--high-background); }
 [data-theme="dark"] .sensory-dots i { background: #46536b; }
+[data-theme="dark"] .sensory-dots--low .sensory-dot--active { background: #2f9478; }
+[data-theme="dark"] .sensory-dots--moderate .sensory-dot--active { background: #e49a1a; }
+[data-theme="dark"] .sensory-dots--high .sensory-dot--active { background: #dc4949; }
 [data-theme="dark"] .map-preview__interactive,
 [data-theme="dark"] .map-notice { background: linear-gradient(145deg, #172238, #132d31); }
 [data-theme="dark"] .trip-metrics div,
