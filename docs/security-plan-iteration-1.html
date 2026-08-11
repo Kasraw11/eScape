@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>eScape Security Plan Iteration 1</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17223b;
+      --muted: #55627f;
+      --rule: #d9dfec;
+      --panel: #f7f9fd;
+      --accent: #4156d8;
+      --accent-soft: #e8edff;
+      --warn: #9f4d22;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background: #eef2fb;
+      line-height: 1.45;
+    }
+    .page {
+      max-width: 980px;
+      margin: 32px auto;
+      padding: 0 28px 40px;
+      background: white;
+      border: 1px solid var(--rule);
+      border-radius: 20px;
+      box-shadow: 0 18px 50px rgba(23, 34, 59, 0.08);
+    }
+    header {
+      padding: 28px 0 18px;
+      border-bottom: 2px solid var(--rule);
+      margin-bottom: 24px;
+    }
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 34px;
+      line-height: 1.1;
+    }
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      max-width: 760px;
+    }
+    h2 {
+      font-size: 20px;
+      margin: 28px 0 10px;
+      padding-top: 4px;
+    }
+    p { margin: 0 0 12px; }
+    ul, ol { margin: 8px 0 16px 20px; }
+    li { margin: 4px 0; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--rule);
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .callout {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      padding: 14px 16px;
+      border-radius: 12px;
+      color: var(--ink);
+      margin: 10px 0 18px;
+    }
+    .note {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 16px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid var(--rule);
+      padding: 10px 12px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: #f1f4fb; }
+    code {
+      background: #f0f3fa;
+      padding: 2px 5px;
+      border-radius: 6px;
+      font-size: 0.95em;
+    }
+    pre {
+      background: #0f172a;
+      color: #e8eefc;
+      padding: 14px 16px;
+      border-radius: 14px;
+      overflow: auto;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .small { font-size: 13px; color: var(--muted); }
+    .section {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .two-col {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 20px;
+    }
+    .erd {
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 13px;
+      background: #f8fbff;
+      border: 1px solid var(--rule);
+      border-radius: 14px;
+      padding: 14px 16px;
+      white-space: pre-wrap;
+    }
+    @media print {
+      body { background: white; }
+      .page {
+        margin: 0;
+        max-width: none;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 0 18mm 14mm;
+      }
+      a { color: inherit; text-decoration: none; }
+    }
+    @page { size: A4; margin: 12mm; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">eScape Security Plan</div>
+      <h1>Iteration 1 Security Plan</h1>
+      <p class="subtitle">
+        eScape is a sensory-aware navigation app for Melbourne CBD that combines routing,
+        pedestrian counts, and refuge discovery to help users choose calmer walking options.
+        This document describes the current security posture, data flow, storage, and update process
+        for the demo and development environment.
+      </p>
+    </header>
+
+    <section class="section">
+      <h2>1. Project Overview</h2>
+      <p>
+        The application provides route planning, live crowd context, and nearby refuge discovery.
+        It uses public open-data sources and local services, with a FastAPI backend and a Next.js
+        frontend. The demo is intentionally lightweight and does not require user accounts for the
+        core journey-planning workflow.
+      </p>
+      <div class="callout">
+        The main security goal is to keep the backend, database, and routing services private
+        while exposing only the public web app through a controlled tunnel or deployment layer.
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>2. Data Handled by the System</h2>
+      <ul>
+        <li>Journey inputs such as origin, destination, and crowd preference.</li>
+        <li>Pedestrian-count data from City of Melbourne open-data sources.</li>
+        <li>Route geometry and segment-level scoring for walking options.</li>
+        <li>Refuge and point-of-interest data, including category, location, and opening hours where available.</li>
+        <li>Prediction results and alert records generated by the backend.</li>
+      </ul>
+      <p class="small">
+        The current demo is not designed to store payment details or intentionally collect sensitive
+        personal identity data.
+      </p>
+    </section>
+
+    <section class="section">
+      <h2>3. Where the Data Is Stored</h2>
+      <div class="grid">
+        <div class="card">
+          <strong>Database</strong>
+          <p>PostgreSQL stores route, sensor, refuge, prediction, and alert data.</p>
+        </div>
+        <div class="card">
+          <strong>Local Runtime</strong>
+          <p>During development, PostgreSQL and OSRM run locally in Docker containers.</p>
+        </div>
+        <div class="card">
+          <strong>Backend</strong>
+          <p>FastAPI reads and writes data through the repository and service layers.</p>
+        </div>
+        <div class="card">
+          <strong>Frontend</strong>
+          <p>Next.js renders the user interface and talks to the backend through the proxy.</p>
+        </div>
+      </div>
+      <p class="small">
+        The public tunnel or hosted frontend should never expose the database directly.
+      </p>
+    </section>
+
+    <section class="section">
+      <h2>4. Update Frequency and Process</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>How Often It Changes</th>
+            <th>Update Process</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Pedestrian counts</td>
+            <td>About every 15 minutes in production; refreshed at startup in the demo launcher.</td>
+            <td>Backend pulls from the City of Melbourne pedestrian-count API, validates readings, and upserts them into PostgreSQL.</td>
+          </tr>
+          <tr>
+            <td>Predictions</td>
+            <td>After each pedestrian refresh and then on a 10-15 minute schedule in production.</td>
+            <td>A backend job recomputes route/sensor predictions from current and historical counts.</td>
+          </tr>
+          <tr>
+            <td>Refuges</td>
+            <td>When the import script is run, typically manually or on a scheduled refresh.</td>
+            <td>Open-data sources are filtered, validated, and upserted into the point-of-interest tables.</td>
+          </tr>
+          <tr>
+            <td>Route options</td>
+            <td>On every journey submission.</td>
+            <td>FastAPI calculates route options, sensor matches, and sensory summaries for the selected trip.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>5. Data Wrangling and Cleaning</h2>
+      <ul>
+        <li>Coordinates are validated before storage.</li>
+        <li>Duplicate records are updated instead of inserted again when a stable source identifier exists.</li>
+        <li>Negative or malformed counts are rejected.</li>
+        <li>Counts are normalized into low, medium, and high crowd categories.</li>
+        <li>Route segments are matched to nearby sensors before scoring.</li>
+        <li>Opening hours are only stored when they can be parsed reliably.</li>
+        <li>Unconfirmed or incomplete refuge data is left as unavailable rather than guessed.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>6. Database Schema Summary</h2>
+      <p>
+        The underlying schema is documented in <code>docs/database-schema.md</code>. The high-level
+        relationships are shown below.
+      </p>
+      <div class="erd">user_preference -> journey_request -> route_option -> route_segment -> route_sensor_score
+                             |                                          |                 |
+                             |                                          |                 +-> sensor_location
+                             |                                          |
+                             |                                          +-> alert
+                             |
+                             +-> journey_feedback
+
+sensor_location -> historical_pedestrian_count
+sensor_location -> realtime_pedestrian_count
+sensor_location -> sensory_prediction -> alert
+
+point_of_interest -> refuge_feedback</div>
+    </section>
+
+    <section class="section">
+      <h2>7. Security Controls</h2>
+      <div class="two-col">
+        <div>
+          <ul>
+            <li>The database and routing service stay local during development.</li>
+            <li>Environment variables hold secrets and API keys.</li>
+            <li>The frontend uses a proxy path to reach the backend instead of exposing internal ports.</li>
+            <li>The public demo URL should go through Cloudflare rather than directly exposing the machine.</li>
+            <li>The backend should fail gracefully if a source API is down.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>Recommended posture</strong>
+          <p>Public access only for the web app, private access for backend and database.</p>
+          <p>Keep demo credentials out of source control and review them before sharing a link.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>8. Risks and Limitations</h2>
+      <ul>
+        <li>Open-data feeds may be stale or temporarily unavailable.</li>
+        <li>Route quality depends on the current routing engine and source data.</li>
+        <li>Refuge opening hours are incomplete for some places.</li>
+        <li>Crowd levels are estimates and should be treated as guidance, not certainty.</li>
+        <li>The current demo architecture is suitable for a class project but not yet for production-grade public exposure.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>9. Validation Checklist</h2>
+      <ul>
+        <li>Confirm the database health endpoint is responding.</li>
+        <li>Confirm pedestrian ingestion and refuge import can run from the launcher.</li>
+        <li>Verify route planning still works after a reboot.</li>
+        <li>Check that the Cloudflare tunnel only exposes the intended public surface.</li>
+        <li>Keep the README and environment examples aligned with the running setup.</li>
+      </ul>
+      <p class="note">
+        This document is a practical security summary for the eScape iteration demo and can be
+        expanded into a formal submission if needed.
+      </p>
+    </section>
+  </main>
+</body>
+</html>
