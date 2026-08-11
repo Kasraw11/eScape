@@ -87,6 +87,31 @@ function routeSensoryLabel(value) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function RefugeCardRating({ summary }) {
+  const count = summary?.response_count || 0;
+  const rating = Number(summary?.average_quietness || 0);
+
+  if (!count) {
+    return (
+      <span className="refuge-card__rating refuge-card__rating--empty" aria-label="No community reviews yet">
+        <span className="refuge-card__stars" aria-hidden="true">☆☆☆☆☆</span>
+        <span>No reviews yet</span>
+      </span>
+    );
+  }
+
+  const roundedRating = Math.round(rating);
+  return (
+    <span className="refuge-card__rating" aria-label={`${rating} out of 5 from ${count} ${count === 1 ? "review" : "reviews"}`}>
+      <span className="refuge-card__stars" aria-hidden="true">
+        {Array.from({ length: 5 }, (_, index) => index < roundedRating ? "★" : "☆").join("")}
+      </span>
+      <strong>{rating.toFixed(1)}</strong>
+      <span>({count} {count === 1 ? "review" : "reviews"})</span>
+    </span>
+  );
+}
+
 export default function RefugesPage() {
   const [location, setLocation] = useState(null);
   const [locationNotice, setLocationNotice] = useState("");
@@ -113,6 +138,7 @@ export default function RefugesPage() {
   const [feedbackError, setFeedbackError] = useState("");
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const [feedbackVersion, setFeedbackVersion] = useState(0);
+  const [feedbackSummaries, setFeedbackSummaries] = useState({});
   const [feedbackNotice, setFeedbackNotice] = useState("");
   const leaveFeedbackRef = useRef(null);
   const detailsReturnRef = useRef(null);
@@ -202,6 +228,27 @@ export default function RefugesPage() {
       .finally(() => { if (!controller.signal.aborted) setFeedbackLoading(false); });
     return () => controller.abort();
   }, [feedbackVersion, selectedId]);
+
+  useEffect(() => {
+    if (!visibleRefuges.length) {
+      setFeedbackSummaries({});
+      return undefined;
+    }
+
+    const controller = new globalThis.AbortController();
+    Promise.allSettled(
+      visibleRefuges.map((refuge) => getRefugeFeedbackSummary(refuge.refuge_id, { signal: controller.signal })),
+    ).then((results) => {
+      if (controller.signal.aborted) return;
+      const summaries = {};
+      results.forEach((result, index) => {
+        if (result.status === "fulfilled") summaries[String(visibleRefuges[index].refuge_id)] = result.value;
+      });
+      setFeedbackSummaries(summaries);
+    });
+
+    return () => controller.abort();
+  }, [feedbackVersion, visibleRefuges]);
 
   function chooseManualLocation(event) {
     event.preventDefault();
@@ -359,7 +406,7 @@ export default function RefugesPage() {
               <button type="button" className="refuge-card__select" onClick={() => selectRefuge(item)} aria-label={`View details for ${item.name}`} aria-pressed={item.refuge_id === selectedId}>
                 {item.refuge_id === selectedId ? <span className="refuge-card__selected-badge"><AppIcon name="pin" size={15} />Selected on map</span> : null}
                 <span className="refuge-card__heading"><span><strong>{item.name}</strong><small>{item.category}</small></span><strong>{distanceLabel(item.distance_m)}</strong></span>
-                <span className="refuge-card__description">{item.sensory_suitability_description}</span>
+                <RefugeCardRating summary={feedbackSummaries[String(item.refuge_id)]} />
                 <span className="refuge-card__meta"><span><strong>{openingLabel(item.opening_status)}</strong>{item.opening_status === "open" && item.opening_hours_summary ? <small>{item.opening_hours_summary}</small> : null}</span><span>{item.estimated_travel_minutes} min walk</span></span>
               </button>
               <h3 className="sr-only">{item.name}</h3>
